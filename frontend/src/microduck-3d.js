@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { sampleMotion } from './robot-motion.js';
 
 // Original, photo-referenced presentation geometry; no Pollen CAD or meshes.
 // Units are visual centimetres, NOT calibrated SDK dimensions or joint frames.
@@ -35,7 +37,7 @@ function box(parent, size, position, mat, radius = .12) {
   return mesh(parent, geometry(`box-${size}-${radius}`, () => new RoundedBoxGeometry(...size, 3, radius)), mat, position);
 }
 function cylinder(parent, radius, length, position, mat, axis = 'x') {
-  const m = mesh(parent, geometry(`cyl-${radius}-${length}`, () => new THREE.CylinderGeometry(radius, radius, length, 24)), mat, position);
+  const m = mesh(parent, geometry(`cyl-${radius}-${length}`, () => new THREE.CylinderGeometry(radius, radius, length, 48)), mat, position);
   if (axis === 'x') m.rotation.z = Math.PI / 2;
   if (axis === 'z') m.rotation.x = Math.PI / 2;
   return m;
@@ -58,18 +60,49 @@ function domeGeometry(width, height, depth) {
     s.lineTo(-w*.18,height);
     s.bezierCurveTo(-w*.68,height,-w,height*.78,-w,height*.32);
     s.closePath();
-    return new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:true,bevelThickness:.07,bevelSize:.07,bevelSegments:3,steps:1,curveSegments:24});
+    const extrusion = new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:true,bevelThickness:.09,bevelSize:.09,bevelSegments:5,steps:1,curveSegments:48});
+    extrusion.deleteAttribute('normal');
+    extrusion.deleteAttribute('uv');
+    const smooth = mergeVertices(extrusion);
+    smooth.computeVertexNormals();
+    extrusion.dispose();
+    return smooth;
   });
 }
 function screw(parent, x, y, z, mats, axis = 'x') {
   cylinder(parent,.15,.06,[x,y,z],mats.steel,axis);
   cylinder(parent,.06,.065,[x,y,z],mats.black,axis);
 }
+// Batch rigid pieces by material while retaining each articulated group's pivot.
+// Cached template geometry is shared across views and colorway changes.
+function batchRigidParts(group){
+  for(const child of [...group.children])if(child.isGroup)batchRigidParts(child);
+  const materials=new Map();
+  for(const child of group.children){
+    if(!child.isMesh)continue;
+    if(!materials.has(child.material))materials.set(child.material,[]);
+    materials.get(child.material).push(child);
+  }
+  for(const [mat,parts] of materials){
+    if(parts.length<2)continue;
+    const copies=parts.map(part=>{
+      part.updateMatrix();
+      const copy=part.geometry.index?part.geometry.toNonIndexed():part.geometry.clone();
+      copy.deleteAttribute('uv');
+      return copy.applyMatrix4(part.matrix);
+    });
+    const merged=mergeGeometries(copies);
+    copies.forEach(copy=>copy.dispose());
+    if(!merged)continue;
+    parts.forEach(part=>group.remove(part));
+    mesh(group,merged,mat);
+  }
+}
 function buildRobot(variant) {
   if (templates.has(variant)) return templates.get(variant).clone(true);
   const p = PALETTES[variant] || PALETTES.cream;
-  const m = {shell:material(p.shell,.36),trim:material(p.trim,.4),ring:material(p.ring,.37),sole:material(p.sole,.65),
-    black:material('#191c1e',.58,.13),gray:material('#60686a',.44,.38),steel:material('#bec4c3',.28,.7),face:material('#777974',.65),
+  const m = {shell:new THREE.MeshPhysicalMaterial({color:p.shell,roughness:.3,clearcoat:.25,clearcoatRoughness:.38}),trim:material(p.trim,.34),ring:material(p.ring,.37),sole:material(p.sole,.78),
+    black:material('#191c1e',.58,.13),gray:material('#60686a',.35,.55),steel:material('#bec4c3',.23,.8),face:material('#686e6b',.49,.08),
     rubber:material('#252c2b',.87),lens:material('#081017',.08,.25),jawInset:material('#bcaac8',.65)};
   const robot = new THREE.Group(); robot.name = 'microduck';
   const torso = new THREE.Group(); torso.name = 'torso'; torso.position.y = 11.5; robot.add(torso);
@@ -113,11 +146,11 @@ function buildRobot(variant) {
   cylinder(head,.7,.42,[-.65,3.45,3.04],m.lens,'z');
   const ring = mesh(head,new THREE.TorusGeometry(.82,.048,8,32),m.gray,[-.65,3.45,3.25]);
   ring.name='lens-ring';
-  const glass = mesh(head,new THREE.SphereGeometry(.55,20,12),m.lens,[-.65,3.45,3.2]);
+  const glass = mesh(head,new THREE.SphereGeometry(.55,32,20),new THREE.MeshPhysicalMaterial({color:'#101c25',roughness:.06,metalness:.22,clearcoat:1,clearcoatRoughness:.04}),[-.65,3.45,3.2]);
   glass.scale.z=.22;
-  box(head,[.92,.4,.1],[1.75,3.4,2.74],m.black,.18);
+  box(head,[.92,.4,.1],[1.75,3.4,2.86],m.black,.18);
   // Dark indicator lens: this illustration does not imply an active camera.
-  cylinder(head,.095,.09,[2.45,3.4,2.78],material('#813b2a',.3),'z');
+  cylinder(head,.095,.09,[2.45,3.4,2.9],material('#813b2a',.3),'z');
   // Side seam and hinge are visible in profile; the camera remains a single
   // offset unit on the wraparound face, not a second eye on each side.
   for(const side of [-1,1]) {
@@ -125,7 +158,7 @@ function buildRobot(variant) {
     cylinder(head,.25,.08,[side*5.36,1.12,1.25],m.black);
     cylinder(head,.13,.1,[side*5.42,1.12,1.25],m.steel);
   }
-  for(const x of [-3.8,3.8]) screw(head,x,1.38,2.68,m,'z');
+  for(const x of [-3.8,3.8]) screw(head,x,1.38,2.88,m,'z');
   const jaw = new THREE.Group(); jaw.name='jaw'; jaw.position.set(0,1.65,-2.6); head.add(jaw);
   jaw.rotation.x=0;
   box(jaw,[10.2,.34,6.15],[0,-1.35,2.6],m.trim,.17);
@@ -171,6 +204,7 @@ function buildRobot(variant) {
     // Fine grooves on the soft toe, useful at close inspection angles.
     for(let n=0;n<3;n++)box(foot,[2.65,.045,.045],[0,-1.515,1.9+n*.3],m.ring,.015);
   }
+  batchRigidParts(robot);
   templates.set(variant,robot);
   return robot.clone(true);
 }
@@ -213,28 +247,36 @@ class MicroduckView extends HTMLElement {
   connectedCallback() {
     if(this.scene)return;
     this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;
+    this.isHero=!!this.closest('.featured-stage');
+    this.card=this.closest('.behavior-card');
     this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.keyboardFocused=false;this.touchPressed=false;
     this.variant=this.dataset.variant||'cream';
     this.scene=new THREE.Scene();
-    this.scene.add(new THREE.HemisphereLight('#fff7e8','#829b8e',1.15));
-    const key=new THREE.DirectionalLight('#fff7ea',2.05);key.position.set(-7,37,16);
-    key.castShadow=true;key.shadow.mapSize.set(512,512);
+    this.scene.add(new THREE.HemisphereLight('#fff7e8','#526961',.85));
+    const key=new THREE.DirectionalLight('#fff7ea',2.4);key.position.set(-15,30,22);
+    key.castShadow=true;key.shadow.mapSize.set(this.isHero?1024:512,this.isHero?1024:512);
     Object.assign(key.shadow.camera,{left:-18,right:18,top:32,bottom:-10,near:1,far:90});
     key.shadow.normalBias=.06;key.shadow.bias=-.0001;this.scene.add(key);
     const fill=new THREE.DirectionalLight('#d4ecff',.7);fill.position.set(18,16,-15);this.scene.add(fill);
+    const rim=new THREE.DirectionalLight('#f4e2bf',1.4);rim.position.set(6,24,-18);this.scene.add(rim);
     this.robot=buildRobot(this.variant);this.scene.add(this.robot);
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
     this.floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.ShadowMaterial({opacity:.1}));
     this.floor.rotation.x=-Math.PI/2;this.floor.receiveShadow=true;this.floor.position.y=-.24;this.scene.add(this.floor);
     this.camera=new THREE.PerspectiveCamera(32,1,.1,180);
     this.camera.position.set(28,22,45);this.camera.lookAt(0,12.5,0);
-    this.scene.environmentIntensity=.38;
+    this.scene.environmentIntensity=.65;
     this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');this.append(this.canvas);
     this.context=this.canvas.getContext('2d',{alpha:true});
     this.stage=this.closest('.motion-scene');
-    this.isHero=!!this.closest('.featured-stage');
     const behavior=this.closest('[class*="behavior-motion--"]');
     this.behavior=behavior?[...behavior.classList].find(c=>c.startsWith('behavior-motion--')).slice(17):this.isHero?'ball-follow':'idle';
+    this.rig={};
+    for(const side of ['left','right'])for(const part of ['leg','shin','foot'])this.rig[`${part}-${side}`]=this.robot.getObjectByName(`${part}-${side}`);
+    if(this.card){
+      this.cardWake=()=>{this.dirty=true;wake();};
+      for(const event of ['pointerenter','pointerleave','focusin','focusout'])this.card.addEventListener(event,this.cardWake);
+    }
     const updateJaw=()=>{
       this.targetJawAngle=(this.pointerOver || this.keyboardFocused || this.touchPressed) ? .34 : 0;
       this.dirty=true;wake();
@@ -270,10 +312,12 @@ class MicroduckView extends HTMLElement {
   }
   disconnectedCallback() {
     active.delete(this);visibility.unobserve(this);resize.unobserve(this);
+    if(this.card)for(const event of ['pointerenter','pointerleave','focusin','focusout'])this.card.removeEventListener(event,this.cardWake);
     this.controls?.remove();this.variantControls?.remove();this.status?.remove();
     // Shared robot geometry/materials are retained by the four template rigs.
     this.ball?.geometry.dispose();this.ball?.material.dispose();
     this.floor?.geometry.dispose();this.floor?.material.dispose();
+    this.scene?.traverse(object=>object.shadow?.dispose());
     this.canvas?.remove();this.scene=null;
     if(!active.size){cancelAnimationFrame(frame);frame=0;}
   }
@@ -314,6 +358,7 @@ class MicroduckView extends HTMLElement {
     this.scene.remove(this.robot);
     this.robot=buildRobot(variant);this.scene.add(this.robot);
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
+    for(const side of ['left','right'])for(const part of ['leg','shin','foot'])this.rig[`${part}-${side}`]=this.robot.getObjectByName(`${part}-${side}`);
     this.variant=variant;this.dataset.variant=variant;
     this.setAttribute('aria-label',`Three-dimensional visual study of a ${variant} Microduck robot`);
     for(const button of this.variantControls.querySelectorAll('button')){
@@ -323,52 +368,32 @@ class MicroduckView extends HTMLElement {
   }
   updateStatus(){
     const webgl=this.dataset.renderer==='webgl';
-    const label=webgl?'HOVER TO OPEN · DRAG TO ROTATE':'REFERENCE ILLUSTRATION · 3D UNAVAILABLE';
+    const label=webgl?(matchMedia('(pointer:coarse)').matches?'HOLD TO OPEN · DRAG TO ROTATE':'HOVER TO OPEN · DRAG TO ROTATE'):'ROBOT ILLUSTRATION';
     if(this.status && this.status.textContent!==label)this.status.textContent=label;
     if(this.controls && this.controls.hidden===webgl)this.controls.hidden=!webgl;
     if(this.variantControls && this.variantControls.hidden===webgl)this.variantControls.hidden=!webgl;
   }
   isPlaying(){
     return motionEnabled() && this.stage?.classList.contains('is-playing') && !this.stage.classList.contains('is-paused') &&
+      (!this.card || this.card.matches(':hover,:focus-within') || this.touchPressed) &&
       !(document.body.classList.contains('has-modal') && this.closest('#view'));
   }
   pose(){
-    const t=this.time, cycle=Math.sin(t*.8), nod=Math.pow(Math.max(0,Math.sin(t*1.25)),4);
+    const t=this.time, motion=sampleMotion(this.behavior,t);
     this.robot.rotation.z=0;
     this.robot.position.x=0;
     for(const side of ['left','right']){
-      this.robot.getObjectByName(`leg-${side}`).rotation.x=0;
-      this.robot.getObjectByName(`shin-${side}`).rotation.x=0;
-      this.robot.getObjectByName(`foot-${side}`).rotation.x=0;
+      this.rig[`leg-${side}`].rotation.x=0;
+      this.rig[`shin-${side}`].rotation.x=0;
+      this.rig[`foot-${side}`].rotation.x=0;
     }
-    this.head.rotation.set(0,cycle*.15,Math.sin(t*.52)*.025);
-    this.neck.rotation.x=Math.sin(t*.65)*.018;
+    this.head.rotation.set(motion.pitch,motion.yaw,motion.roll);
+    this.neck.rotation.x=motion.neck;
     this.jaw.rotation.x=this.jawAngle;
-    if(this.behavior==='polite-bow'){this.head.rotation.x=nod*.24;this.neck.rotation.x=nod*.09;}
-    if(this.behavior==='hello-wave'){this.head.rotation.x=-nod*.08;this.head.rotation.z=Math.sin(t*1.8)*nod*.1;}
-    if(this.behavior==='duck-spot')this.head.rotation.y=Math.sin(t*.7)*.33;
-    if(this.behavior==='tiny-dance'){
-      this.head.rotation.z=Math.sin(t*2)*.08;this.head.rotation.y=Math.sin(t)*.18;
-      this.neck.rotation.x=Math.sin(t*2)*.045;this.robot.rotation.y=Math.sin(t*.8)*.2;
-      this.robot.rotation.z=Math.sin(t*1.7)*.022;
-    }else this.robot.rotation.y=0;
-    if(this.behavior==='balance-back'){
-      this.robot.rotation.z=Math.sin(t*1.2)*.035;
-      this.head.rotation.z=-this.robot.rotation.z*.8;
-    }
+    this.robot.rotation.y=0;
     if(this.ball){
-      this.ball.position.set(Math.sin(t*Math.PI/4)*7.5,1.13,3);
+      this.ball.position.set(motion.ball,1.13,3);
       this.ball.rotation.z=-this.ball.position.x/1.35;
-      this.head.rotation.y=Math.atan2(this.ball.position.x,15)*.8;
-      this.head.rotation.x=.1;
-      const step=Math.sin(t*1.8)*.045;
-      const left=this.robot.getObjectByName('leg-left'),right=this.robot.getObjectByName('leg-right');
-      left.rotation.x=step;right.rotation.x=-step;
-      this.robot.getObjectByName('shin-left').rotation.x=-step*.65;
-      this.robot.getObjectByName('shin-right').rotation.x=step*.65;
-      this.robot.getObjectByName('foot-left').rotation.x=-step*.35;
-      this.robot.getObjectByName('foot-right').rotation.x=step*.35;
-      this.robot.rotation.z=Math.sin(t*.9)*.012;
     }
     // Feet remain planted. Gait/physics will come from the SDK, not decorative bobbing.
     this.dataset.poseTime=t.toFixed(3);
@@ -386,7 +411,7 @@ class MicroduckView extends HTMLElement {
     this.camera.lookAt(0,this.isHero?10.6:11.2,0);
     const bounds=this.getBoundingClientRect();
     if(bounds.width<1 || bounds.height<1)return;
-    const dpr=Math.min(devicePixelRatio||1,1.65),w=Math.min(900,Math.round(bounds.width*dpr)),h=Math.min(900,Math.round(bounds.height*dpr));
+    const dpr=Math.min(devicePixelRatio||1,this.isHero?2:1.5),limit=this.isHero?1200:700,w=Math.min(limit,Math.round(bounds.width*dpr)),h=Math.min(limit,Math.round(bounds.height*dpr));
     if(this.canvas.width!==w || this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
     this.camera.aspect=w/h;
     // Fit the full robot even in narrow containers; cards keep a roomy studio crop.

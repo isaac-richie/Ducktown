@@ -342,10 +342,81 @@
   .profile-hero{grid-template-columns:minmax(0,1fr) minmax(180px,36%)}
   .profile-copy{min-width:0}
 }
+
+/* Presentation pass: one focal point, readable supporting text, quiet chrome. */
+.ui-icon{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.breadcrumb-orbit .ui-icon{width:16px;height:16px}
+.mobile-nav .ui-icon{width:22px;height:22px}
+.launch-ribbon,.stage-coordinate,.stage-frame,.featured-overline .sim-label{display:none}
+.featured-stage:before,.featured-stage .stage-orbit{animation:none!important}
+.featured-stage:before{opacity:.12}
+.featured-stage .stage-orbit{box-shadow:none;opacity:.32}
+.pond-heading h1{font-size:clamp(38px,4.3vw,64px);letter-spacing:-.055em;line-height:1.04}
+.page-head h1,.page-title{font-size:clamp(34px,4vw,56px);letter-spacing:-.05em;line-height:1.08}
+.pond-heading p,.page-head .page-sub{font-size:15px;line-height:1.6}
+.featured-moment{box-shadow:0 16px 44px rgba(30,67,51,.08)}
+.featured-story h2{font-size:clamp(30px,3vw,44px);line-height:1.08;letter-spacing:-.045em}
+.featured-story>p{font-size:14px;line-height:1.7}
+.featured-resident strong{font-size:14px}
+.featured-resident small,.featured-capabilities small,.featured-story .featured-clarity{font-size:12px;line-height:1.5}
+.featured-capabilities strong{font-size:13px}
+.featured-actions{flex-wrap:wrap}
+.featured-actions .button{font-size:12px;min-height:44px}
+.featured-stage .robot-angle-controls button{font-size:11px;min-width:36px;min-height:36px;padding:6px}
+.robot-shell-controls{gap:5px;padding:4px 7px;bottom:100px}
+.robot-shell-controls button{width:30px;height:30px;flex:none}
+.robot-shell-controls>span{font-size:10px}
+.featured-stage .robot-render-label{font-size:9px;letter-spacing:.07em;bottom:79px}
+.stage-bottom strong{font-size:13px}
+.stage-bottom span{font-size:11px}
+.stage-bottom button{min-width:40px;min-height:40px}
+.stage-top{font-size:10px}
+.policy-path p,.installed-panel p,.behavior-body p,.feed-card p{font-size:14px;line-height:1.65}
+.policy-path-steps strong,.behavior-meta,.post-author,.text-button{font-size:12px}
+.policy-path-steps small,.post-sub,.receipt,.post-actions button{font-size:11px}
+.behavior-body p{min-height:0}
+.behavior-body h3{font-size:20px}
+.behavior-body .button{font-size:12px;min-height:44px}
+.behavior-art .motion-cue{display:none}
+.behavior-art{height:210px}
+.preview-notice{font-size:12px;font-weight:600;background:#f0f3e8;border-color:#dce5d6;color:#405b49}
+.pond-pulse>span:first-child{display:none}
+@media(max-width:900px){
+  .featured-story{padding:26px}
+  .featured-capabilities{margin-top:18px}
+}
+@media(max-width:600px){
+  .pond-heading h1{font-size:clamp(34px,9vw,48px)}
+  .page-head h1,.page-title{font-size:clamp(32px,8.5vw,44px)}
+  .pond-heading p,.page-head .page-sub{font-size:14px}
+  .featured-stage{min-height:480px}
+  .featured-stage microduck-view.duck-graphic{top:116px;height:232px}
+  .featured-stage .robot-angle-controls{top:52px;right:14px}
+  .featured-stage .robot-angle-controls button{min-width:38px;min-height:38px}
+  .robot-shell-controls{left:16px;bottom:82px}
+  .robot-shell-controls button{width:34px;height:34px}
+  .featured-stage .robot-render-label{display:none}
+  .stage-bottom{left:12px;right:12px;bottom:12px}
+  .stage-bottom span{font-size:10px}
+  .stage-bottom time{display:none}
+  .stage-top{left:14px;right:14px;top:14px}
+  .stage-top>span:last-child{display:none}
+  .featured-story{min-height:0;padding:24px}
+  .featured-story h2{font-size:34px;margin-top:20px}
+  .featured-resident{margin-top:16px}
+  .featured-actions{flex-direction:column}
+  .featured-actions .button{width:100%;font-size:12px}
+  .policy-path{padding:22px}
+  .profile-copy p{font-size:14px}
+}
+@media(pointer:coarse){
+  .robot-shell-controls button{width:40px;height:40px}
+  .featured-stage .robot-angle-controls button{min-width:44px;min-height:44px}
+}
 @media(max-width:600px){
   .profile-hero{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 240px;min-height:0}
   .profile-copy{padding:25px 25px 0}
   .profile-copy h1{font-size:clamp(31px,9vw,40px);line-height:1.08;overflow-wrap:normal}
-  .profile-copy p{max-width:34ch;font-size:12px;line-height:1.6;overflow-wrap:normal}
+  .profile-copy p{max-width:34ch;font-size:14px;line-height:1.6;overflow-wrap:normal}
   .profile-hero microduck-view.duck-graphic{position:relative;grid-row:2;width:min(100%,300px);height:240px;top:auto;right:auto;bottom:auto;justify-self:center;margin:0;aspect-ratio:auto}
 }
