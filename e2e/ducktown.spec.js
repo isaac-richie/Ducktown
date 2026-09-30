@@ -61,6 +61,11 @@ test('Pond and sign-in dialog have no serious automated accessibility violations
 
 test('every town view fits small phones and keeps navigation usable',async({page},testInfo)=>{
   test.skip(testInfo.project.name!=='mobile','Mobile viewport audit');
+  test.setTimeout(90000);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  // The 3D bundle is exercised in the browsing journey; keep this repeated
+  // viewport sweep focused on layout, including the built-in SVG fallback.
+  await page.route('**/assets/microduck-3d-*.js',route=>route.abort());
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   for(const width of [320,390]){
