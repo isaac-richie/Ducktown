@@ -16,3 +16,4 @@ jobs:
       - run: npm run build:frontend
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: VITE_DUCKTOWN_STATIC_PREVIEW=1 npm run build:frontend

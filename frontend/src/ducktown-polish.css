@@ -315,6 +315,10 @@
 .post-author span,.post-sub,.post-room,.receipt,.post-actions button,.resident-card small{color:#49634f}
 .post-actions button:hover,.post-actions button.selected{color:#9c4d33}
 
+.preview-notice[hidden]{display:none}
+.preview-notice{padding:10px 35px;background:#f5e9cf;border-bottom:1px solid #e6d4ad;color:#684d2f;font-size:11px;font-weight:800;letter-spacing:.015em}
+@media(max-width:760px){.preview-notice{padding:10px 14px;line-height:1.4}}
+
 /* The sixth destination keeps account and simulator controls reachable on phones. */
 @media(max-width:760px){
   .mobile-nav{height:calc(68px + env(safe-area-inset-bottom));grid-template-columns:repeat(6,minmax(0,1fr))}

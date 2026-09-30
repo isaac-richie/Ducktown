@@ -3,6 +3,8 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
 
 (() => {
   const STORE_KEY = 'ducktown-ui-v1';
+  const staticPreview = import.meta.env.VITE_DUCKTOWN_STATIC_PREVIEW === '1';
+  if (staticPreview) document.querySelector('#preview-notice').hidden = false;
   const defaults = {likes:[], saved:[], joined:[], settings:{publicProfile:true,shareRuns:false,camera:false,approval:true,motion:true},posts:[],runs:[]};
   let savedState = {};
   try { savedState = JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {}; } catch {}
@@ -53,6 +55,7 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
   const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify({likes:state.likes,saved:state.saved,joined:state.joined,settings:state.settings,posts:state.localPosts,runs:state.runs})); } catch {} };
   const apiPost = post => ({id:post.id,userId:post.userId||null,backendPost:true,viewerLiked:post.viewerLiked===true,name:post.name,handle:post.handle,avatar:(post.name||'D')[0].toUpperCase(),avatarClass:'pepper',time:new Date(post.createdAt).toLocaleString(),room:'The Pond',kind:post.origin==='simulator_telemetry_observed'?'robot':'owner',origin:post.origin,evidence:post.origin==='simulator_telemetry_observed'?post.evidence:null,text:escapeHtml(post.text).replace(/\n/g,'<br>'),receipt:post.receipt,likes:post.likes||0,replies:post.replies||0});
   async function loadBackend() {
+    if (staticPreview) return;
     try {
       const [response,authResponse]=await Promise.all([fetch('/api/v1/posts',{headers:{Accept:'application/json'}}),fetch('/api/v1/auth/me')]);
       if(!response.ok || !response.headers.get('content-type')?.includes('application/json'))return;
@@ -225,6 +228,7 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
     return `<div class="moment-timeline" aria-label="What the simulator showed">${timeline.map(item=>`<div><span class="moment-timeline-dot" aria-hidden="true"></span><strong>${labels[item.phase]}</strong><small>${escapeHtml(item.atSeconds.toFixed(2))}s</small></div>`).join('')}</div>`;
   }
   function renderReceiptPanel() {
+    if(staticPreview)return '<section class="info-panel card receipt-panel"><h2>Your simulator moments</h2><p class="perch-note">Simulator moments are not connected in this visual preview. No robot has been tested here.</p></section>';
     const content=!state.backendAvailable?'<p class="perch-note">Open Ducktown with its local app to see saved simulator observations.</p>'
       :!state.authUser?'<p class="perch-note">Sign in to see observations saved to your account. Nothing is shared automatically.</p>'
       :state.receiptsError?`<p class="perch-note" role="alert">${escapeHtml(state.receiptsError)}</p>`
@@ -233,6 +237,7 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
     return `<section class="info-panel card receipt-panel"><div class="section-heading"><div><span class="tiny-label">ONLY YOU CAN SEE THIS</span><h2>Your simulator moments</h2><p>What the simulator showed · no score · no physical robot</p></div></div>${content}</section>`;
   }
   function renderInstalledPanel() {
+    if(staticPreview)return '<section class="installed-panel" aria-label="Moves available in your simulator"><div class="installed-head"><div><span class="tiny-label">VISUAL PREVIEW</span><h2>Moves we found</h2></div><span class="installed-badge">NOT CONNECTED</span></div><p>Ducktown is showing Workshop ideas, not moves installed in a simulator. The live check will come later.</p></section><div class="concept-divider"><span>IDEAS TO EXPLORE</span><p>These playful ideas are not installed moves.</p></div>';
     const data=state.installedPolicies;
     let content;
     if(!state.backendAvailable)content='<p>Open Ducktown with its local app to see what your simulator has available.</p>';
@@ -251,6 +256,22 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
     const routes = {pond:renderPond,workshop:renderWorkshop,arena:renderArena,map:renderMap,profile:renderProfile,perch:renderPerch};
     if (!routes[state.view]) state.view='pond';
     viewEl.innerHTML=routes[state.view]();
+    if(staticPreview&&state.view==='profile'){
+      const button=viewEl.querySelector('.page-head [data-action="auth-switch"]');
+      if(button)button.textContent='Accounts coming soon ↗';
+      const empty=viewEl.querySelector('.empty-state');
+      if(empty)empty.innerHTML='<strong>A little preview of the flock.</strong>Member profiles will arrive when accounts open.';
+    }
+    if(staticPreview&&state.view==='perch'){
+      viewEl.querySelector('.page-sub').textContent='A preview of the space for your duck and simulator moments. Accounts are not live yet.';
+      viewEl.querySelector('.perch-intro p').textContent='Accounts and robot connections are not live in this preview.';
+      viewEl.querySelector('.settings-card>p').textContent='Soon you will be able to create a duck profile and save its story.';
+      viewEl.querySelector('.settings-card>[data-action="auth-switch"]').textContent='Accounts coming soon ↗';
+      viewEl.querySelector('.info-panel .perch-note').textContent='Simulator checks and private moments will arrive with the backend. Nothing can connect to a robot from this preview.';
+      viewEl.querySelector('[data-action="simulator-check"]').textContent='Simulator coming soon ↗';
+    }
+    if(staticPreview&&state.view==='pond')viewEl.querySelector('.pond-heading>[data-action="compose"]').textContent='Try a demo note ↗';
+    if(staticPreview&&state.view==='workshop')viewEl.querySelector('.page-sub').textContent='Explore playful Microduck ideas. Live simulator checks will come later.';
     if(state.view==='perch'){viewEl.insertAdjacentHTML('beforeend',renderReceiptPanel());if(state.backendAvailable)viewEl.insertAdjacentHTML('beforeend',renderSdkPanel());if(state.authUser)viewEl.insertAdjacentHTML('beforeend',renderAccountPanel());}
     if(state.view==='workshop')viewEl.querySelector('.page-head')?.insertAdjacentHTML('afterend',renderInstalledPanel());
     document.querySelector('#breadcrumb-current').textContent=names[state.view];
@@ -332,6 +353,7 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
     if(state.backendAvailable&&!state.authUser){openAuth();return;}
     openModal(`<div class="tiny-label">◉ FROM ${state.authRobot?escapeHtml(state.authRobot.name.toUpperCase()):'PEPPER’S CORNER'}</div><h2>Share an update</h2><p>Post a build note, question, or story. ${state.backendAvailable?'Your note will appear in the Pond.':'This demo draft is saved only in your browser.'}</p><form id="compose-form"><textarea class="modal-input" name="message" maxlength="800" placeholder="What have you and your duck been exploring?" required></textarea><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="perch-note">Owner note · not robot evidence</span><button type="submit" class="button button-dark">Share with the Pond →</button></div></form>`);
     modalRoot.querySelector('textarea').focus();
+    if(staticPreview)modalRoot.querySelector('#compose-form [type="submit"]').textContent='Save demo note →';
   }
   const busyLikes=new Set();
   async function togglePostLike(id) {
@@ -387,6 +409,7 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
     }
   }
   function openAuth(mode='login',purpose='share') {
+    if(staticPreview){openModal('<div class="tiny-label">✳ VISUAL PREVIEW</div><h2>Accounts are coming soon.</h2><p>This Vercel preview has no database yet, so there is nothing to sign in to. Please do not enter a password here. You can still explore the town and try browser-only demo notes.</p><button class="button button-dark" data-view="workshop">Explore the Workshop ↗</button>');return;}
     const registering=mode==='register';
     openModal(`<div class="tiny-label">⚑ YOUR DUCKTOWN ACCOUNT</div><h2>${registering?'Make yourself at home':'Welcome back'}</h2><p>${registering?'Create an account and a duck profile for this local preview. No physical robot will be connected.':purpose==='inspect'?'Sign in to see what your local simulator has available. We will not start a move.':'Sign in to share a note. You can still explore the Pond without an account.'}</p><form id="auth-form" data-mode="${mode}"><label class="perch-note" for="auth-handle">Your name in town</label><input id="auth-handle" class="modal-input" name="handle" autocomplete="username" pattern="[A-Za-z][A-Za-z0-9_]{2,23}" minlength="3" maxlength="24" placeholder="Choose a handle" required><label class="perch-note" for="auth-password">Password · at least 12 characters</label><input id="auth-password" class="modal-input" name="password" type="password" autocomplete="${registering?'new-password':'current-password'}" minlength="12" maxlength="128" required><p id="auth-error" role="alert" class="perch-note"></p><button class="button button-dark" type="submit">${registering?'Create account':'Sign in'} →</button></form><button class="text-button" style="margin-top:16px" data-action="auth-switch" data-mode="${registering?'login':'register'}">${registering?'Already have an account? Sign in':'New here? Create an account'} ↗</button>${registering?'':'<button class="text-button" style="display:block;margin-top:12px" data-action="recover-open">Use a recovery code ↗</button>'}`);
     modalRoot.querySelector('#auth-handle').focus();
@@ -486,8 +509,9 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
     const playing=motionAllowed();
     openModal(`<div class="tiny-label">◉ JUST AN ILLUSTRATION</div><h2>${escapeHtml(b.name)}</h2><p>This short loop shows how a future replay might feel. It is not footage of a robot or a simulator result.</p><div class="replay-scene motion-scene behavior-motion--${b.id} ${playing?'is-playing':'is-paused'}"><div class="replay-orbit"></div>${duckSvg('duck-graphic',b.variant)}<span class="replay-accent">${b.accent}</span><div class="replay-controls"><span>ILLUSTRATED LOOP · 8 SEC</span><button data-action="toggle-replay" aria-label="${playing?'Pause':'Play'} illustration" aria-pressed="${playing}" ${!motionAllowed()?'disabled title="Resume motion from the header to play"':''}>${playing?'Ⅱ':'▶'}</button></div></div><div class="receipt" style="margin-top:12px"><span class="verified">◉</span><strong>Idea preview · no result measured</strong><span>· ${escapeHtml(b.version)}</span></div><button class="button button-dark" data-action="behavior" data-id="${b.id}">Back to the idea ↗</button>`);
   }
-  function connectPlan() { openModal(`<div class="tiny-label">⚑ WHAT COMES NEXT</div><h2>We’re building carefully.</h2><p>Today Ducktown can check a local simulator, show its available moves, and let you review an observation before sharing it. It cannot start a move, connect a physical duck, or install a community-made move.</p><div class="modal-meta"><span>1 · Check the simulator</span><span>2 · Make sure the move is known</span><span>3 · Review what happened</span><span>4 · Share only with your approval</span></div><p style="margin-top:16px">A simulator moment is never presented as a proven result or a physical-robot test.</p><button class="button button-dark" data-action="close-modal">Got it</button>`); }
+  function connectPlan() { openModal(`<div class="tiny-label">⚑ WHAT COMES NEXT</div><h2>We’re building carefully.</h2><p>${staticPreview?'This visual preview cannot check a simulator, share posts, or connect a physical robot. Those features need the backend and careful review before launch.':'Today Ducktown can check a local simulator, show its available moves, and let you review an observation before sharing it. It cannot start a move, connect a physical duck, or install a community-made move.'}</p><div class="modal-meta"><span>1 · Check the simulator</span><span>2 · Make sure the move is known</span><span>3 · Review what happened</span><span>4 · Share only with your approval</span></div><p style="margin-top:16px">A simulator moment is never presented as a proven result or a physical-robot test.</p><button class="button button-dark" data-action="close-modal">Got it</button>`); }
   async function inspectSimulator(check='status') {
+    if(staticPreview){showToast('Simulator checks are not available in this preview.');return;}
     const checks={status:'status',health:'ctl health --json',policies:'ctl policy list',version:'ctl version',realtime:'realtime'};
     if(!Object.hasOwn(checks,check))return;
     if(!state.backendAvailable){showToast('Open the local Ducktown app to check the simulator.');return;}
