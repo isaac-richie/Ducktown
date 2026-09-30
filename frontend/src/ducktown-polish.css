@@ -336,3 +336,16 @@
   .topbar{padding-inline:10px}
   .installed-head{flex-direction:column;align-items:flex-start}
 }
+
+/* Profile artwork gets its own row on phones instead of squeezing the title. */
+@media(max-width:760px){
+  .profile-hero{grid-template-columns:minmax(0,1fr) minmax(180px,36%)}
+  .profile-copy{min-width:0}
+}
+@media(max-width:600px){
+  .profile-hero{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 240px;min-height:0}
+  .profile-copy{padding:25px 25px 0}
+  .profile-copy h1{font-size:clamp(31px,9vw,40px);line-height:1.08;overflow-wrap:normal}
+  .profile-copy p{max-width:34ch;font-size:12px;line-height:1.6;overflow-wrap:normal}
+  .profile-hero microduck-view.duck-graphic{position:relative;grid-row:2;width:min(100%,300px);height:240px;top:auto;right:auto;bottom:auto;justify-self:center;margin:0;aspect-ratio:auto}
+}

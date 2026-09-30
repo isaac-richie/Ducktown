@@ -103,6 +103,38 @@ test('every town view fits small phones and keeps navigation usable',async({page
   expect(errors).toEqual([]);
 });
 
+test('demo profile keeps its title readable and robot separate on phones',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='mobile','Mobile profile layout');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.route('**/assets/microduck-3d-*.js',route=>route.abort());
+  for(const width of [320,390,600]){
+    await page.setViewportSize({width,height:800});
+    await page.goto('/#profile');
+    const layout=await page.evaluate(()=>{
+      const hero=document.querySelector('.profile-hero');
+      const copy=hero.querySelector('.profile-copy');
+      const title=copy.querySelector('h1');
+      const robot=hero.querySelector('microduck-view');
+      const rect=element=>{
+        const {top,right,bottom,left}=element.getBoundingClientRect();
+        return {top,right,bottom,left};
+      };
+      return {
+        hero:rect(hero),copy:rect(copy),title:rect(title),robot:rect(robot),
+        titleLines:title.getBoundingClientRect().height/parseFloat(getComputedStyle(title).lineHeight),
+        titleOverflows:title.scrollWidth>title.clientWidth
+      };
+    });
+    expect(layout.titleOverflows,`${width}px title overflows`).toBe(false);
+    // The shared test database may contain a longer member name from signup tests.
+    expect(layout.titleLines,`${width}px title wraps excessively`).toBeLessThan(3.1);
+    expect(layout.copy.right-layout.copy.left,`${width}px copy is squeezed`).toBeGreaterThanOrEqual(layout.hero.right-layout.hero.left-1);
+    expect(layout.copy.right,`${width}px copy leaves card`).toBeLessThanOrEqual(layout.hero.right+1);
+    expect(layout.robot.top,`${width}px robot overlaps copy`).toBeGreaterThanOrEqual(layout.copy.bottom-1);
+    expect(layout.robot.bottom,`${width}px robot leaves card`).toBeLessThanOrEqual(layout.hero.bottom+1);
+  }
+});
+
 test('mobile town views have no serious automated accessibility violations',async({page},testInfo)=>{
   test.skip(testInfo.project.name!=='mobile','Mobile accessibility audit');
   test.setTimeout(90000);
