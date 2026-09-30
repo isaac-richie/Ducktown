@@ -1,0 +1,410 @@
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// Original, photo-referenced presentation geometry; no Pollen CAD or meshes.
+// Units are visual centimetres, NOT calibrated SDK dimensions or joint frames.
+const PALETTES = {
+  cream: {shell:'#f7e6cb', trim:'#ed722c', ring:'#edb52c', sole:'#f6cb37'},
+  graphite: {shell:'#6c6a68', trim:'#f2ca4d', ring:'#ab8ec6', sole:'#7964a1'},
+  lavender: {shell:'#bfa9cf', trim:'#f2ca4d', ring:'#a9dbe8', sole:'#7964a1'},
+  sky: {shell:'#a9dbe8', trim:'#ed722c', ring:'#edb52c', sole:'#f6cb37'}
+};
+const active = new Set();
+const templates = new Map();
+const geometryCache = new Map();
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+let renderer, environment, renderFailure = false, frame = 0, lastTick = 0;
+
+function material(color, roughness = .46, metalness = 0) {
+  return new THREE.MeshStandardMaterial({color, roughness, metalness});
+}
+function geometry(key, create) {
+  if (!geometryCache.has(key)) geometryCache.set(key, create());
+  return geometryCache.get(key);
+}
+function mesh(parent, geom, mat, position = [0,0,0]) {
+  const object = new THREE.Mesh(geom, mat);
+  object.position.set(...position);
+  object.castShadow = true;
+  object.receiveShadow = true;
+  parent.add(object);
+  return object;
+}
+function box(parent, size, position, mat, radius = .12) {
+  return mesh(parent, geometry(`box-${size}-${radius}`, () => new RoundedBoxGeometry(...size, 3, radius)), mat, position);
+}
+function cylinder(parent, radius, length, position, mat, axis = 'x') {
+  const m = mesh(parent, geometry(`cyl-${radius}-${length}`, () => new THREE.CylinderGeometry(radius, radius, length, 24)), mat, position);
+  if (axis === 'x') m.rotation.z = Math.PI / 2;
+  if (axis === 'z') m.rotation.x = Math.PI / 2;
+  return m;
+}
+function link(parent, a, b, width, depth, mat) {
+  const start = new THREE.Vector3(...a), end = new THREE.Vector3(...b);
+  const m = box(parent, [width, start.distanceTo(end), depth], start.clone().add(end).multiplyScalar(.5).toArray(), mat, .1);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), end.sub(start).normalize());
+  return m;
+}
+function cable(parent, points, mat, thickness = .065) {
+  const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+  return mesh(parent, new THREE.TubeGeometry(curve, 18, thickness, 5, false), mat);
+}
+function domeGeometry(width, height, depth) {
+  return geometry(`dome-${width}-${height}-${depth}`, () => {
+    const s = new THREE.Shape(), w = width / 2;
+    s.moveTo(-w,0); s.lineTo(w,0); s.lineTo(w,height*.32);
+    s.bezierCurveTo(w,height*.78,w*.68,height,w*.18,height);
+    s.lineTo(-w*.18,height);
+    s.bezierCurveTo(-w*.68,height,-w,height*.78,-w,height*.32);
+    s.closePath();
+    return new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:true,bevelThickness:.07,bevelSize:.07,bevelSegments:3,steps:1,curveSegments:24});
+  });
+}
+function screw(parent, x, y, z, mats, axis = 'x') {
+  cylinder(parent,.15,.06,[x,y,z],mats.steel,axis);
+  cylinder(parent,.06,.065,[x,y,z],mats.black,axis);
+}
+function buildRobot(variant) {
+  if (templates.has(variant)) return templates.get(variant).clone(true);
+  const p = PALETTES[variant] || PALETTES.cream;
+  const m = {shell:material(p.shell,.36),trim:material(p.trim,.4),ring:material(p.ring,.37),sole:material(p.sole,.65),
+    black:material('#191c1e',.58,.13),gray:material('#60686a',.44,.38),steel:material('#bec4c3',.28,.7),face:material('#777974',.65),
+    rubber:material('#252c2b',.87),lens:material('#081017',.08,.25)};
+  const robot = new THREE.Group(); robot.name = 'microduck';
+  const torso = new THREE.Group(); torso.name = 'torso'; torso.position.y = 11.5; robot.add(torso);
+  box(torso,[5.4,3.6,3.9],[0,.7,-.35],m.black,.4);
+  box(torso,[5.9,3.05,1.55],[0,.8,1.35],m.shell,.65);
+  box(torso,[5.4,3.65,1.65],[0,.25,-2.4],m.black,.22); // rear battery
+  for(let i=0;i<5;i++) box(torso,[.12,2.7,.08],[-1.6+i*.8,.2,-3.25],m.gray,.02);
+  for(const side of [-1,1]) {
+    box(torso,[.6,2.95,3.6],[side*2.9,.8,-.25],m.shell,.24);
+    screw(torso,side*3.22,1.4,.8,m);
+    cylinder(torso,.91,1.25,[side*3.2,-.6,-.2],m.black);
+    cylinder(torso,.63,1.35,[side*3.2,-.6,-.2],m.gray);
+    screw(torso,side*3.91,-.6,-.2,m);
+  }
+  // Visible neck brackets, motor housings and a loose cable loop.
+  const neck = new THREE.Group(); neck.name='neck'; neck.position.set(0,2.25,.3); torso.add(neck);
+  box(neck,[2.1,2,1.7],[0,1,-.25],m.black,.18);
+  cylinder(neck,.8,2.8,[0,.45,.05],m.gray);
+  for(const side of [-1,1]) {
+    link(neck,[side*1.05,.5,0],[side*1.05,4.45,1],.25,1.25,m.gray);
+    cylinder(neck,.75,.3,[side*1.18,4.2,1],m.gray);
+    for(const y of [1.15,2.05,3.0]) cylinder(neck,.17,.28,[side*1.06,y,(y-.5)*.25],m.black);
+    screw(neck,side*1.37,.45,.05,m); screw(neck,side*1.37,4.2,1,m);
+  }
+  box(neck,[1.8,1.65,1.65],[0,3.6,.9],m.black,.14);
+  cable(neck,[[.9,.4,-.3],[1.55,2,-.65],[1.5,4.1,.25],[.8,4.8,1]],m.black);
+  cable(neck,[[-.8,.5,-.4],[-1.45,1.7,-.65],[-1.3,3.5,.3],[-.8,4,1]],m.rubber,.05);
+  const head = new THREE.Group(); head.name='head'; head.position.set(0,4.3,1); neck.add(head);
+  cylinder(head,.75,2.1,[0,.2,0],m.black);
+  // The long hood and inset gray face distinguish hardware from a cartoon eye.
+  mesh(head,domeGeometry(10.3,5.75,6.05),m.shell,[0,.85,-3.55]);
+  // A shadowed inset makes the face read as a real panel tucked beneath the hood.
+  mesh(head,domeGeometry(9.82,5.25,.12),m.black,[0,.96,2.48]);
+  mesh(head,domeGeometry(9.48,4.98,.1),m.face,[0,1.07,2.6]);
+  box(head,[10.5,.48,6.8],[0,.75,-.1],m.trim,.18);
+  box(head,[10.0,.19,3.35],[0,.73,3.5],m.ring,.08);
+  box(head,[9.92,.16,3.0],[0,.55,3.72],m.trim,.08);
+  // The production photographs show a single offset camera, not a cartoon pair.
+  cylinder(head,1.47,.25,[-2.02,3.25,2.83],m.black,'z');
+  cylinder(head,1.29,.36,[-2.02,3.25,2.91],m.ring,'z');
+  cylinder(head,.82,.39,[-2.02,3.25,3.0],m.black,'z');
+  cylinder(head,.6,.42,[-2.02,3.25,3.04],m.lens,'z');
+  const ring = mesh(head,new THREE.TorusGeometry(.7,.048,8,32),m.gray,[-2.02,3.25,3.25]);
+  ring.name='lens-ring';
+  const glass = mesh(head,new THREE.SphereGeometry(.45,20,12),m.lens,[-2.02,3.25,3.2]);
+  glass.scale.z=.22;
+  box(head,[.72,.3,.1],[1.06,3.12,2.74],m.black,.1);
+  // Dark indicator lens: this illustration does not imply an active camera.
+  cylinder(head,.095,.09,[1.7,3.12,2.78],material('#813b2a',.3),'z');
+  // Side seam and hinge are visible in profile; the camera remains a single
+  // offset unit on the wraparound face, not a second eye on each side.
+  for(const side of [-1,1]) {
+    box(head,[.1,.16,5.4],[side*5.31,.98,-.08],m.trim,.04);
+    cylinder(head,.25,.08,[side*5.36,1.12,1.25],m.black);
+    cylinder(head,.13,.1,[side*5.42,1.12,1.25],m.steel);
+  }
+  for(const x of [-3.8,3.8]) screw(head,x,1.38,2.68,m,'z');
+  const jaw = new THREE.Group(); jaw.name='jaw'; jaw.position.set(0,.6,-2.15); head.add(jaw);
+  box(jaw,[10.05,.34,7.7],[0,-.2,3.65],m.trim,.17);
+  box(jaw,[9.65,.13,2.55],[0,-.02,6.05],m.ring,.09);
+  box(jaw,[9.3,.08,2.3],[0,-.38,6.05],m.black,.035);
+  for(const side of [-1,1]) {
+    cylinder(jaw,.63,.25,[side*5.1,.15,.35],m.trim);
+    screw(jaw,side*5.25,.15,.35,m);
+  }
+  // Two articulated legs. Side covers belong to thighs, never to arms/wings.
+  for (const side of [-1,1]) {
+    const leg = new THREE.Group(); leg.name=side<0?'leg-left':'leg-right';
+    leg.position.set(side*3.65,10.8,-.25); robot.add(leg);
+    box(leg,[1.8,2.2,1.9],[0,-.35,0],m.black,.16);
+    link(leg,[0,-.2,0],[0,-3.7,-1.4],1.6,1.2,m.gray);
+    const plate = new THREE.Shape();
+    plate.moveTo(-1.35,0);plate.quadraticCurveTo(-1.6,.3,-1.2,.65);plate.lineTo(1.4,1.05);
+    plate.quadraticCurveTo(1.8,1,1.65,.45);plate.lineTo(.65,-2.5);plate.quadraticCurveTo(.3,-2.9,-.2,-2.5);plate.closePath();
+    const cover = mesh(leg,geometry('thigh-cover',()=>new THREE.ExtrudeGeometry(plate,{depth:.3,bevelEnabled:true,bevelThickness:.14,bevelSize:.14,bevelSegments:3,curveSegments:10})),m.shell,[side*1.08,-1.35,-.2]);
+    cover.rotation.y=side*Math.PI/2;
+    screw(leg,side*1.38,-.75,.7,m); screw(leg,side*1.38,-3.5,-.55,m);
+    cylinder(leg,.73,2.4,[0,-3.65,-1.4],m.black);
+    cylinder(leg,.52,2.55,[0,-3.65,-1.4],m.gray);
+    screw(leg,side*1.32,-3.65,-1.4,m);
+    const shin = new THREE.Group();shin.name=side<0?'shin-left':'shin-right'; shin.position.set(0,-3.65,-1.4);leg.add(shin);
+    link(shin,[0,0,0],[0,-4.5,1.4],1.1,1.0,m.gray);
+    box(shin,[1.65,2.15,1.6],[0,-3.6,1.12],m.black,.13);
+    for(const x of [-.75,.75])link(shin,[x,-.5,.1],[x,-4,1.25],.16,.8,m.gray);
+    cylinder(shin,.61,2.3,[0,-4.5,1.4],m.gray);
+    screw(shin,side*1.2,-4.5,1.4,m);
+    cable(shin,[[.7,-.4,-.3],[1,-1.8,.05],[.8,-3.4,.7]],m.black,.05);
+    const foot = new THREE.Group();foot.name=side<0?'foot-left':'foot-right';foot.position.set(0,-4.5,1.4);shin.add(foot);
+    box(foot,[3.3,.46,5.0],[0,-2.33,.9],m.sole,.2);
+    box(foot,[3.2,.62,4.8],[0,-1.85,.9],m.trim,.22);
+    for (const s of [-1,1]) {
+      link(foot,[s*1.1,-1.5,-.9],[s*1.1,0,0],.23,1.3,m.trim);
+      cylinder(foot,.63,.29,[s*1.1,0,0],m.trim);
+      screw(foot,s*1.28,0,0,m);
+    }
+    // Fine grooves on the soft toe, useful at close inspection angles.
+    for(let n=0;n<3;n++)box(foot,[2.65,.045,.045],[0,-1.515,1.9+n*.3],m.ring,.015);
+  }
+  templates.set(variant,robot);
+  return robot.clone(true);
+}
+
+function initRenderer() {
+  if(renderer || renderFailure) return renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
+    renderer.setPixelRatio(1);
+    renderer.setClearColor(0x000000,0);
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure=.91;
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    const pmrem=new THREE.PMREMGenerator(renderer), room=new RoomEnvironment();
+    const target=pmrem.fromScene(room,.04);
+    environment=target.texture;
+    room.dispose();pmrem.dispose();
+    renderer.domElement.addEventListener('webglcontextlost',event=>{
+      event.preventDefault();renderFailure=true;
+      for(const item of active){item.dataset.renderer='fallback';item.updateStatus();}
+    });
+  } catch(error) {
+    renderFailure=true;
+    console.warn('Ducktown: 3D unavailable; showing the reference illustration.',error);
+  }
+  return renderer;
+}
+
+const visibility=new IntersectionObserver(entries=>{
+  for(const entry of entries){entry.target.visible=entry.isIntersecting;entry.target.dirty=true;}
+  wake();
+},{rootMargin:'80px'});
+const resize=new ResizeObserver(entries=>{
+  for(const entry of entries)entry.target.dirty=true;
+  wake();
+});
+
+class MicroduckView extends HTMLElement {
+  connectedCallback() {
+    if(this.scene)return;
+    this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;
+    this.variant=this.dataset.variant||'cream';
+    this.scene=new THREE.Scene();
+    this.scene.add(new THREE.HemisphereLight('#fff7e8','#829b8e',1.15));
+    const key=new THREE.DirectionalLight('#fff7ea',2.05);key.position.set(-7,37,16);
+    key.castShadow=true;key.shadow.mapSize.set(512,512);
+    Object.assign(key.shadow.camera,{left:-18,right:18,top:32,bottom:-10,near:1,far:90});
+    key.shadow.normalBias=.06;key.shadow.bias=-.0001;this.scene.add(key);
+    const fill=new THREE.DirectionalLight('#d4ecff',.7);fill.position.set(18,16,-15);this.scene.add(fill);
+    this.robot=buildRobot(this.variant);this.scene.add(this.robot);
+    this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
+    this.floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.ShadowMaterial({opacity:.1}));
+    this.floor.rotation.x=-Math.PI/2;this.floor.receiveShadow=true;this.floor.position.y=-.24;this.scene.add(this.floor);
+    this.camera=new THREE.PerspectiveCamera(32,1,.1,180);
+    this.camera.position.set(28,22,45);this.camera.lookAt(0,12.5,0);
+    this.scene.environmentIntensity=.38;
+    this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-hidden','true');this.append(this.canvas);
+    this.context=this.canvas.getContext('2d',{alpha:true});
+    this.stage=this.closest('.motion-scene');
+    this.isHero=!!this.closest('.featured-stage');
+    const behavior=this.closest('[class*="behavior-motion--"]');
+    this.behavior=behavior?[...behavior.classList].find(c=>c.startsWith('behavior-motion--')).slice(17):this.isHero?'ball-follow':'idle';
+    if(this.isHero){
+      this.ball=new THREE.Mesh(new THREE.SphereGeometry(1.35,24,16),material('#d96248',.55));
+      this.ball.castShadow=true;this.scene.add(this.ball);
+      this.makeControls();
+      this.addEventListener('pointerdown',event=>{
+        if(event.button!==0)return;
+        this.dragX=event.clientX;this.dragYaw=this.targetYaw;
+        this.setPointerCapture(event.pointerId);
+      });
+      this.addEventListener('pointermove',event=>{
+        if(this.dragX===undefined)return;
+        this.targetYaw=Math.max(-1.45,Math.min(1.45,this.dragYaw+(event.clientX-this.dragX)*.009));
+        this.dirty=true;wake();
+        for(const button of this.controls.children)button.setAttribute('aria-pressed','false');
+      });
+      this.addEventListener('pointerup',()=>{this.dragX=undefined;});
+      this.addEventListener('pointercancel',()=>{this.dragX=undefined;});
+    }
+    active.add(this);visibility.observe(this);resize.observe(this);wake();
+  }
+  disconnectedCallback() {
+    active.delete(this);visibility.unobserve(this);resize.unobserve(this);
+    this.controls?.remove();this.variantControls?.remove();this.status?.remove();
+    // Shared robot geometry/materials are retained by the four template rigs.
+    this.ball?.geometry.dispose();this.ball?.material.dispose();
+    this.floor?.geometry.dispose();this.floor?.material.dispose();
+    this.canvas?.remove();this.scene=null;
+    if(!active.size){cancelAnimationFrame(frame);frame=0;}
+  }
+  makeControls() {
+    const group=document.createElement('div');group.className='robot-angle-controls';
+    group.setAttribute('role','group');group.setAttribute('aria-label','Robot viewing angle');
+    for(const [label,yaw] of [['Front',0],['¾',.48],['Side',1.4]]){
+      const button=document.createElement('button');button.type='button';button.textContent=label;
+      button.setAttribute('aria-label',`${label==='¾'?'Three-quarter':label} robot view`);
+      button.setAttribute('aria-pressed',String(yaw===.48));
+      button.addEventListener('click',()=>{
+        this.targetYaw=yaw;this.dirty=true;
+        if(!motionEnabled())this.yaw=yaw;
+        for(const b of group.children)b.setAttribute('aria-pressed',String(b===button));wake();
+      });group.append(button);
+    }
+    this.controls=group;this.parentElement.append(group);
+    const shellControls=document.createElement('div');
+    shellControls.className='robot-shell-controls';
+    shellControls.setAttribute('role','group');
+    shellControls.setAttribute('aria-label','Microduck shell color');
+    const shellLabel=document.createElement('span');shellLabel.textContent='SHELL';shellControls.append(shellLabel);
+    for(const [name,palette] of Object.entries(PALETTES)){
+      const button=document.createElement('button');button.type='button';
+      button.style.setProperty('--shell-color',palette.shell);
+      button.setAttribute('aria-label',`${name[0].toUpperCase()+name.slice(1)} shell`);
+      button.setAttribute('title',`${name[0].toUpperCase()+name.slice(1)} shell`);
+      button.setAttribute('aria-pressed',String(this.variant===name));
+      button.addEventListener('click',()=>this.setVariant(name));
+      shellControls.append(button);
+    }
+    this.variantControls=shellControls;this.parentElement.append(shellControls);
+    const status=document.createElement('span');status.className='robot-render-label';
+    this.status=status;this.parentElement.append(status);this.updateStatus();
+  }
+  setVariant(variant){
+    if(this.variant===variant || !PALETTES[variant])return;
+    this.scene.remove(this.robot);
+    this.robot=buildRobot(variant);this.scene.add(this.robot);
+    this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
+    this.variant=variant;this.dataset.variant=variant;
+    this.setAttribute('aria-label',`Three-dimensional visual study of a ${variant} Microduck robot`);
+    for(const button of this.variantControls.querySelectorAll('button')){
+      button.setAttribute('aria-pressed',String(button.getAttribute('aria-label').toLowerCase().startsWith(variant)));
+    }
+    this.dirty=true;wake();
+  }
+  updateStatus(){
+    const webgl=this.dataset.renderer==='webgl';
+    const label=webgl?'DRAG TO ROTATE · ORIGINAL 3D MODEL':'REFERENCE ILLUSTRATION · 3D UNAVAILABLE';
+    if(this.status && this.status.textContent!==label)this.status.textContent=label;
+    if(this.controls && this.controls.hidden===webgl)this.controls.hidden=!webgl;
+    if(this.variantControls && this.variantControls.hidden===webgl)this.variantControls.hidden=!webgl;
+  }
+  isPlaying(){
+    return motionEnabled() && this.stage?.classList.contains('is-playing') && !this.stage.classList.contains('is-paused') &&
+      !(document.body.classList.contains('has-modal') && this.closest('#view'));
+  }
+  pose(){
+    const t=this.time, cycle=Math.sin(t*.8), nod=Math.pow(Math.max(0,Math.sin(t*1.25)),4);
+    this.robot.rotation.z=0;
+    this.robot.position.x=0;
+    for(const side of ['left','right']){
+      this.robot.getObjectByName(`leg-${side}`).rotation.x=0;
+      this.robot.getObjectByName(`shin-${side}`).rotation.x=0;
+      this.robot.getObjectByName(`foot-${side}`).rotation.x=0;
+    }
+    this.head.rotation.set(0,cycle*.15,Math.sin(t*.52)*.025);
+    this.neck.rotation.x=Math.sin(t*.65)*.018;
+    this.jaw.rotation.x=0;
+    if(this.behavior==='polite-bow'){this.head.rotation.x=nod*.24;this.neck.rotation.x=nod*.09;}
+    if(this.behavior==='hello-wave'){this.head.rotation.x=-nod*.08;this.head.rotation.z=Math.sin(t*1.8)*nod*.1;this.jaw.rotation.x=nod*.11;}
+    if(this.behavior==='duck-spot')this.head.rotation.y=Math.sin(t*.7)*.33;
+    if(this.behavior==='tiny-dance'){
+      this.head.rotation.z=Math.sin(t*2)*.08;this.head.rotation.y=Math.sin(t)*.18;
+      this.neck.rotation.x=Math.sin(t*2)*.045;this.robot.rotation.y=Math.sin(t*.8)*.2;
+      this.robot.rotation.z=Math.sin(t*1.7)*.022;
+    }else this.robot.rotation.y=0;
+    if(this.behavior==='balance-back'){
+      this.robot.rotation.z=Math.sin(t*1.2)*.035;
+      this.head.rotation.z=-this.robot.rotation.z*.8;
+    }
+    if(this.ball){
+      this.ball.position.set(Math.sin(t*Math.PI/4)*7.5,1.13,3);
+      this.ball.rotation.z=-this.ball.position.x/1.35;
+      this.head.rotation.y=Math.atan2(this.ball.position.x,15)*.8;
+      this.head.rotation.x=.1;
+      const step=Math.sin(t*1.8)*.045;
+      const left=this.robot.getObjectByName('leg-left'),right=this.robot.getObjectByName('leg-right');
+      left.rotation.x=step;right.rotation.x=-step;
+      this.robot.getObjectByName('shin-left').rotation.x=-step*.65;
+      this.robot.getObjectByName('shin-right').rotation.x=step*.65;
+      this.robot.getObjectByName('foot-left').rotation.x=-step*.35;
+      this.robot.getObjectByName('foot-right').rotation.x=step*.35;
+      this.robot.rotation.z=Math.sin(t*.9)*.012;
+    }
+    // Feet remain planted. Gait/physics will come from the SDK, not decorative bobbing.
+    this.dataset.poseTime=t.toFixed(3);
+  }
+  draw(dt){
+    if(!this.context || !initRenderer() || renderFailure)return;
+    if(this.isPlaying())this.time+=dt;
+    if(motionEnabled())this.yaw+=(this.targetYaw-this.yaw)*Math.min(1,dt*10);
+    else this.yaw=this.targetYaw;
+    this.pose();
+    this.camera.position.set(Math.sin(this.yaw)*52,22,Math.cos(this.yaw)*52);
+    this.camera.lookAt(0,this.isHero?10.6:11.2,0);
+    const bounds=this.getBoundingClientRect();
+    if(bounds.width<1 || bounds.height<1)return;
+    const dpr=Math.min(devicePixelRatio||1,1.65),w=Math.min(900,Math.round(bounds.width*dpr)),h=Math.min(900,Math.round(bounds.height*dpr));
+    if(this.canvas.width!==w || this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
+    this.camera.aspect=w/h;
+    // Fit the full robot even in narrow containers; cards keep a roomy studio crop.
+    this.camera.fov=this.isHero?32:34;
+    if(this.camera.aspect<.85)this.camera.fov=39;
+    this.camera.updateProjectionMatrix();this.scene.environment=environment;
+    renderer.setSize(w,h,false);renderer.render(this.scene,this.camera);
+    this.context.clearRect(0,0,w,h);this.context.drawImage(renderer.domElement,0,0);
+    this.dataset.renderer='webgl';this.updateStatus();this.dirty=false;
+  }
+}
+customElements.define('microduck-view',MicroduckView);
+
+function motionEnabled(){return !reduced.matches && !document.documentElement.classList.contains('motion-disabled');}
+function wake(){if(!frame && !document.hidden && !renderFailure)frame=requestAnimationFrame(tick);}
+function tick(now){
+  frame=0;
+  if(document.hidden || renderFailure)return;
+  const dt=Math.min((now-lastTick)/1000,.06);
+  if(now-lastTick<1000/30){wake();return;}
+  lastTick=now;
+  let continuous=false;
+  for(const item of active){
+    if(!item.visible)continue;
+    const changingAngle=Math.abs(item.targetYaw-item.yaw)>.001;
+    const moving=item.isPlaying() || changingAngle;
+    if(item.dirty || moving){
+      try{item.draw(dt);}catch(error){item.dataset.renderer='fallback';item.updateStatus();console.warn('Ducktown model render failed',error);}
+    }
+    continuous ||= moving;
+  }
+  if(continuous)wake();
+}
+new MutationObserver(()=>{
+  for(const item of active)item.dirty=true;
+  wake();
+}).observe(document.documentElement,{attributes:true,attributeFilter:['class'],subtree:true});
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){cancelAnimationFrame(frame);frame=0;}else{lastTick=performance.now();wake();}
+});
+reduced.addEventListener('change',()=>{for(const item of active)item.dirty=true;wake();});

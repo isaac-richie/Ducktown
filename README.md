@@ -1,0 +1,19 @@
+# Ducktown
+
+Ducktown is a local social beta for Microduck builders. People can create a simulation duck profile, publish Pond notes, follow other ducks, save Workshop ideas and Arena prompts, reply, and review private simulator receipts before choosing to share a carefully worded summary. The 3D duck and illustrated behaviors are presentation, not robot telemetry.
+
+## Run locally
+
+Requires Node.js 20.20.2 or newer in the Node 20 line. From this folder, run `npm ci` and `npm start`, then open `http://127.0.0.1:8787/`. The app serves only on loopback. `npm test` covers the local API, database, social flows, recovery, moderation, concurrent writes, and SDK failure cases. `npm run build:frontend` builds the browser app. After `npx playwright install chromium`, `npm run test:browser` runs isolated desktop/mobile journeys and automated accessibility checks. `npm run backup:db` makes a consistent database backup; `npm run rehearse:restore -- /absolute/path/to/BACKUP.sqlite` verifies a copied backup without replacing live data.
+
+The active data file is `data/ducktown.json.sqlite`. If `data/ducktown.json` already exists, its content is imported once on first start; it remains untouched. Keep `data/`, `work/evidence/`, and the operator token private. See [backend notes](server/README.md) for the SDK observer and the fixed simulator challenge, and [frontend notes](frontend/README.md) for UI development.
+
+## Release boundary
+
+This build is ready for local beta walkthroughs. Public-origin security checks, persisted write limits, backup-restore rehearsal, and browser checks are implemented, but public hosting still needs a configured HTTPS reverse proxy, a deployment rehearsal, and an operations plan for abuse review and monitoring. The app continues to bind only to loopback; do not expose port 8787 directly. No physical Microduck has been tested. A simulator receipt reports only the observed policy transition and return; it does not claim task completion, a measured score, or real-robot safety.
+
+## Vercel boundary
+
+The responsive frontend is buildable, but **do not deploy this folder to Vercel as a live social app yet**. The Node server currently binds to loopback and is not a Vercel Function. More importantly, `better-sqlite3` writes accounts, sessions, posts, reports, and rate limits to a local file; Vercel's function filesystem is [ephemeral and cannot persist a shared SQLite database](https://vercel.com/kb/guide/is-sqlite-supported-in-vercel). A static-only deploy would show Ducktown's local-preview UI without a working social backend. The local Pollen SDK simulator and operator-only evidence workflow must remain on a trusted local machine, not be presented as a cloud-connected robot.
+
+Before a public Vercel launch, choose a durable remote database (for example a [Marketplace Postgres or Turso integration](https://vercel.com/docs/marketplace-storage)), migrate and test the store plus rate limits, adapt the public HTTP API to [Vercel Functions](https://vercel.com/docs/functions), then rehearse registration, sign-in, posting, moderation, backups, and failure handling on a preview deployment. Keep the simulator/operator process separate. The current local SQLite backup remains private and must not be committed or bundled into a deployment.

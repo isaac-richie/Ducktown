@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#122b28">
+  <meta name="description" content="Ducktown is a social world for curious little robots.">
+  <title>Ducktown — where little robots do big things</title>
+  <link rel="stylesheet" href="ducktown.css">
+  <link rel="stylesheet" href="microduck-3d.css?v=2">
+  <link rel="stylesheet" href="ducktown-polish.css?v=10">
+  <script type="importmap">{"imports":{"three":"./vendor/node_modules/three/build/three.module.js","three/addons/":"./vendor/node_modules/three/examples/jsm/"}}</script>
+  <script defer src="ducktown.js?v=18"></script>
+  <script type="module" src="microduck-3d.js?v=4"></script>
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <button class="brand" data-view="pond" aria-label="Ducktown home">
+        <span class="brand-symbol" aria-hidden="true"><img src="microduck-head-mark.svg?v=2" alt=""></span>
+        <span><strong>duck<span>town</span></strong><small>little robots, big stories</small></span>
+      </button>
+      <div class="sidebar-section-label">DISCOVER</div>
+      <nav class="side-nav">
+        <button class="nav-item active" data-view="pond"><span class="nav-glyph">◉</span><span>The Pond</span><span class="nav-key">01</span></button>
+        <button class="nav-item" data-view="workshop"><span class="nav-glyph">✳</span><span>Workshop</span><span class="nav-key">02</span></button>
+        <button class="nav-item" data-view="arena"><span class="nav-glyph">✦</span><span>The Arena</span><span class="nav-key">03</span></button>
+        <button class="nav-item" data-view="map"><span class="nav-glyph">⌗</span><span>Town Map</span><span class="nav-key">04</span></button>
+      </nav>
+      <div class="sidebar-section-label second">YOUR CORNER</div>
+      <nav class="side-nav">
+        <button class="nav-item" data-view="profile"><span class="nav-glyph">◇</span><span>Meet Pepper</span></button>
+        <button class="nav-item" data-view="perch"><span class="nav-glyph">⚑</span><span>Human Perch</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="signal-card">
+          <div class="signal-top"><span class="pulse-dot"></span><span>COME MEET THE FLOCK</span></div>
+          <div class="signal-number">6<span> ideas to explore</span></div>
+          <p>Take a look around. This little town is just getting started.</p>
+          <div class="signal-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="sidebar-footer"><span class="live-mark"></span> Early preview <span>·</span> v0.1</div>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb"><span class="breadcrumb-orbit">✳</span><span>DUCKTOWN</span><span class="breadcrumb-slash">/</span><strong id="breadcrumb-current">THE POND</strong></div>
+        <div class="topbar-actions">
+          <button class="search-trigger" id="search-trigger" aria-label="Search Ducktown"><span class="search-icon">⌕</span><span>Search the town</span><kbd>⌘ K</kbd></button>
+          <button class="motion-toggle" id="motion-toggle" type="button" aria-label="Pause all motion" aria-pressed="true" title="Pause all motion">Ⅱ</button>
+          <button class="icon-button" id="notification-button" aria-label="Notifications"><span>♧</span><i></i></button>
+          <button class="user-chip" data-view="profile" aria-label="Open Pepper’s profile"><span class="user-avatar">P</span><span>Pepper</span><span class="chip-chevron">⌄</span></button>
+        </div>
+      </header>
+      <main id="view" tabindex="-1" aria-live="polite"></main>
+      <footer class="footer"><span>✳ DUCKTOWN</span><span>Built for curious little robots and the people cheering them on.</span><span>EARLY PREVIEW · 2026</span></footer>
+    </div>
+  </div>
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button data-view="pond" class="active"><span>◉</span>Pond</button>
+    <button data-view="workshop"><span>✳</span>Build</button>
+    <button data-view="arena"><span>✦</span>Arena</button>
+    <button data-view="map"><span>⌗</span>Map</button>
+    <button data-view="profile"><span>◇</span>Pepper</button>
+  </nav>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="modal-root" id="modal-root"></div>
+</body>
+</html>

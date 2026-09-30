@@ -1,0 +1,92 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { verifySimulatorArtifact, loadSimulatorArtifact } from './receipts.js';
+import { assessSkillTrace } from './skill-telemetry.js';
+import { createApp } from './app.js';
+import { readStoredState } from './test-helpers.js';
+import { importReceipt } from './import-receipt.js';
+
+const sha256=value=>createHash('sha256').update(value).digest('hex');
+function fixtureArtifact() {
+  const frames=Array.from({length:43},(_,index)=>({t:index*0.02,policy:index>=5&&index<=29?'kick_left':'stand',fallen:false,hz:50,missed:0}));
+  const rawMonitorNdjson=frames.map(frame=>JSON.stringify({jsonrpc:'2.0',method:'robot.state',params:{t:frame.t,policy:frame.policy,safety:{fallen:frame.fallen},loop:{hz:frame.hz,missed:frame.missed}}})).join('\n')+'\n';
+  const assessment=assessSkillTrace(frames,{submittedAtIndex:5});
+  const record={kind:'simulator_skill_attempt',origin:'official_daemon_simulator',skill:'kick_left',scene:{name:'scene.xml',sha256:'a'.repeat(64)},policy:{source:'pollen-robotics/microduck-policies',version:'v5',filename:'ball_kick_left.onnx',sha256:'b'.repeat(64)},preflight:{healthy:true,realtimeFactor:1},command:{state:'queued_acknowledged',reason:null},telemetry:{...assessment,source:'robotctl monitor --hz 50 --json',frameCount:frames.length,submittedAtIndex:5,traceSha256:sha256(rawMonitorNdjson),rawMonitorNdjson,frames},executionObserved:true,postflight:{healthy:true,standing:true,samples:[{healthy:true}]},startedAt:'2026-09-27T00:00:00.000Z',endedAt:'2026-09-27T00:00:02.000Z',hardwareConnected:false,completionVerified:false,performanceMeasured:false};
+  return {...record,recordSha256:sha256(JSON.stringify(record))};
+}
+const reseal=artifact=>{const {recordSha256,...record}=artifact;return {...record,recordSha256:sha256(JSON.stringify(record))};};
+
+test('private artifact verifier replays SDK verdict and rejects tampering or inflated claims',()=>{
+  const valid=fixtureArtifact();
+  const receipt=verifySimulatorArtifact(valid);
+  assert.equal(receipt.verification,'telemetry_observed');
+  assert.equal(receipt.attribution,'local_operator_assigned_unverified');
+  assert.equal(receipt.completionVerified,false);
+  assert.equal(receipt.performanceMeasured,false);
+  const altered=structuredClone(valid);altered.telemetry.rawMonitorNdjson+=' ';assert.throws(()=>verifySimulatorArtifact(altered),/hash mismatch/);
+  const forged=structuredClone(valid);forged.telemetry.frames[10].policy='stand';assert.throws(()=>verifySimulatorArtifact(reseal(forged)),/Derived SDK frames/);
+  const overclaim=structuredClone(valid);overclaim.completionVerified=true;assert.throws(()=>verifySimulatorArtifact(reseal(overclaim)),/unsupported result claim/);
+  const missing=structuredClone(valid);missing.telemetry.rawMonitorNdjson='';assert.throws(()=>verifySimulatorArtifact(reseal(missing)),/Raw SDK trace/);
+});
+
+test('local operator import is private, single-assignment, and unavailable to browser accounts',async t=>{
+  const folder=await mkdtemp(path.join(os.tmpdir(),'ducktown-receipt-test-'));
+  t.after(()=>rm(folder,{recursive:true,force:true}));
+  const dataFile=path.join(folder,'data.json'),evidenceDir=path.join(folder,'evidence');
+  await mkdir(evidenceDir);
+  const artifactFile=`skill-smoke-${randomUUID()}.json`;
+  await writeFile(path.join(evidenceDir,artifactFile),JSON.stringify(fixtureArtifact()));
+  await assert.rejects(loadSimulatorArtifact(evidenceDir,'../data.json'),/Invalid evidence filename/);
+  await assert.rejects(loadSimulatorArtifact(evidenceDir,`skill-smoke-${randomUUID()}.json`),/not found/);
+  const linkFile=`skill-smoke-${randomUUID()}.json`;
+  await symlink(path.join(evidenceDir,artifactFile),path.join(evidenceDir,linkFile));
+  await assert.rejects(loadSimulatorArtifact(evidenceDir,linkFile),/bounded regular file/);
+  const {server}=await createApp({dataFile,evidenceDir});
+  server.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+  t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const baseUrl=`http://127.0.0.1:${server.address().port}`;
+  const register=async handle=>{
+    const response=await fetch(`${baseUrl}/api/v1/auth/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle,password:'long-enough-secret'})});
+    assert.equal(response.status,201);
+    return response.headers.get('set-cookie').split(';')[0];
+  };
+  const alice=await register('duck_alice'),bob=await register('duck_bob');
+  assert.equal((await fetch(`${baseUrl}/api/v1/receipts`)).status,401);
+  assert.equal((await fetch(`${baseUrl}/api/v1/operator/import-receipt`,{method:'POST',headers:{'Content-Type':'application/json',Cookie:alice},body:JSON.stringify({handle:'duck_alice',artifactFile})})).status,403);
+  assert.equal((await fetch(`${baseUrl}/api/v1/operator/import-receipt`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${'0'.repeat(64)}`},body:JSON.stringify({handle:'duck_alice',artifactFile})})).status,403);
+  const receipt=await importReceipt({dataFile,baseUrl,handle:'duck_alice',artifactFile});
+  assert.equal(receipt.private,true);
+  assert.equal(receipt.verification,'telemetry_observed');
+  assert.equal(receipt.attribution,'local_operator_assigned_unverified');
+  const aliceReceipts=(await (await fetch(`${baseUrl}/api/v1/receipts`,{headers:{Cookie:alice}})).json()).receipts;
+  const bobReceipts=(await (await fetch(`${baseUrl}/api/v1/receipts`,{headers:{Cookie:bob}})).json()).receipts;
+  assert.equal(aliceReceipts.length,1);
+  assert.deepEqual(bobReceipts,[]);
+  assert.ok(!JSON.stringify(aliceReceipts).includes('rawMonitorNdjson'));
+  assert.deepEqual((await (await fetch(`${baseUrl}/api/v1/posts`)).json()).posts,[]);
+  await assert.rejects(importReceipt({dataFile,baseUrl,handle:'duck_bob',artifactFile}),/already attached/);
+  assert.equal(readStoredState(dataFile).receipts.length,1);
+  const shareUrl=`${baseUrl}/api/v1/receipts/${receipt.id}/share`;
+  const shareHeaders=cookie=>({'Content-Type':'application/json',Cookie:cookie});
+  assert.equal((await fetch(shareUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);
+  assert.equal((await fetch(shareUrl,{method:'POST',headers:shareHeaders(bob),body:'{}'})).status,404);
+  assert.equal((await fetch(shareUrl,{method:'POST',headers:shareHeaders(alice),body:'{"score":100}'})).status,400);
+  const publish=await fetch(shareUrl,{method:'POST',headers:shareHeaders(alice),body:'{}'});
+  assert.equal(publish.status,201);
+  const {post,receipt:published}=await publish.json();
+  assert.equal(post.origin,'simulator_telemetry_observed');
+  assert.equal(post.evidence.verification,'telemetry_observed');
+  assert.equal(post.evidence.completionVerified,false);
+  assert.equal(post.evidence.performanceMeasured,false);
+  assert.match(post.text,/cannot confirm who controlled the simulator or whether the task succeeded/);
+  assert.match(post.text,/No physical robot was tested/);
+  assert.ok(!JSON.stringify(post).includes('rawMonitorNdjson'));
+  assert.equal(published.publishedPostId,post.id);
+  assert.equal((await fetch(shareUrl,{method:'POST',headers:shareHeaders(alice),body:'{}'})).status,409);
+  assert.equal((await (await fetch(`${baseUrl}/api/v1/posts`)).json()).posts[0].id,post.id);
+  assert.equal(readStoredState(dataFile).posts.length,1);
+});
