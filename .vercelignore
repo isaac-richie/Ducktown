@@ -1,0 +1,7 @@
+# The visual preview only needs browser source and build configuration.
+# Never upload the local database, SDK checkout, evidence, or backup files.
+/*
+!frontend
+!package.json
+!package-lock.json
+!vercel.json
