@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sampleMotion, solveLeg, ANKLE_REST, sampleGait } from './robot-motion.js';
+import { sampleMotion, solveLeg, ANKLE_REST, sampleGait, REAL_GAIT, GAIT } from './robot-motion.js';
 
 test('authored gestures stay bounded and close their loops without a jump',()=>{
   for(const [name,duration] of Object.entries({idle:8,'polite-bow':7,'hello-wave':6,'duck-spot':7,'balance-back':6,'tiny-dance':5,'ball-follow':8})){
@@ -60,4 +60,20 @@ test('battle gait alternates planted and swinging feet and loops without a jump'
   const a=sampleGait(0),b=sampleGait(.9999);
   for(const key of Object.keys(a))assert.ok(Math.abs(a[key]-b[key])<.01,`gait ${key} jumps at wrap`);
   assert.ok(sampleGait(.75).lift>1.5 && sampleGait(.25).liftL>1.5);
+});
+
+test('real walk shuffles: shorter, lower, and quicker than the battle run, with a level head',()=>{
+  assert.ok(REAL_GAIT.stride<GAIT.stride/2 && REAL_GAIT.height<GAIT.height/3 && REAL_GAIT.cadence>GAIT.cadence);
+  for(let p=0;p<1;p+=.01){
+    const g=sampleGait(p,REAL_GAIT);
+    assert.ok(g.lift===0 || g.liftL===0);
+    assert.ok(g.roll===0 && g.yaw===0 && g.pitch===0,'head should stay steady');
+    assert.ok(Math.abs(g.hipRoll)<=REAL_GAIT.hipRoll+1e-9);
+  }
+});
+
+test('turning lengthens the outer stride and shortens the inner one',()=>{
+  const straight=sampleGait(0,REAL_GAIT),turning=sampleGait(0,REAL_GAIT,.4);
+  assert.ok(Math.abs(turning.reach-straight.reach*.6)<1e-9);
+  assert.ok(Math.abs(sampleGait(.5,REAL_GAIT,.4).reachL-sampleGait(.5,REAL_GAIT).reachL*1.4)<1e-9);
 });

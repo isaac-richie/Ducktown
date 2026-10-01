@@ -2,7 +2,8 @@
 // Each phrase has anticipation, a held gesture, and a quiet return to neutral.
 // crouch/lift/reach are centimetres of presentation travel (lift/reach = right foot, liftL/reachL = left);
 // lean and tip (whole-body fall onto the back) are radians; jaw opens 0-.34.
-const rest={pitch:0,yaw:0,roll:0,neck:0,ball:0,crouch:0,lean:0,lift:0,reach:0,liftL:0,reachL:0,tip:0,jaw:0};
+// hipRoll rocks the whole body over the stance foot (radians) while the head counter-rotates to stay level.
+const rest={pitch:0,yaw:0,roll:0,neck:0,ball:0,crouch:0,lean:0,lift:0,reach:0,liftL:0,reachL:0,tip:0,jaw:0,hipRoll:0};
 const clips={
   idle:[[0,{}],[1.8,{}],[2.6,{yaw:.15}],[3.6,{yaw:.15}],[4.6,{}],[8,{}]],
   'polite-bow':[[0,{}],[.7,{pitch:-.06}],[1.5,{pitch:.32,neck:.12}],[2.5,{pitch:.32,neck:.12}],[3.5,{pitch:-.025}],[4.2,{}],[7,{}]],
@@ -49,12 +50,18 @@ function footCycle(q,stride,height){
   const s=(q-.5)/.5;
   return {reach:-stride+2*stride*smooth(s),lift:height*Math.sin(Math.PI*s)};
 }
-export const GAIT={stride:2.2,height:1.7,crouch:1.9,lean:.2,cadence:1.55};
-export function sampleGait(phase,{stride,height,crouch,lean}=GAIT){
+// Battle: a stylised mech run (long strides, high knees, deep crouch). Not a real Microduck gait.
+export const GAIT={stride:2.2,height:1.7,crouch:1.9,lean:.2,cadence:1.55,roll:.07,yaw:.09,bob:.35,nod:.04,hipRoll:0};
+// Real walk: closer to the trained Microduck walk as filmed: short quick shuffle steps, feet barely
+// lifting, an upright body rocking over each stance foot, and a steady head. Still hand-authored.
+export const REAL_GAIT={stride:.9,height:.5,crouch:.15,lean:.04,cadence:2.2,roll:0,yaw:0,bob:.12,nod:0,hipRoll:.055};
+// turn = signed curvature × half hip width: on a curve the outer foot needs a longer stride and the
+// inner foot a shorter one, or the planted foot skids as the body rotates over it.
+export function sampleGait(phase,{stride,height,crouch,lean,roll,yaw,bob,nod,hipRoll}=GAIT,turn=0){
   const p=((phase%1)+1)%1,w=Math.PI*2*p;
-  const right=footCycle(p,stride,height),left=footCycle((p+.5)%1,stride,height);
-  return {...rest,crouch:crouch+.35*Math.abs(Math.sin(w)),lean,roll:.07*Math.sin(w),yaw:.09*Math.sin(w),
-    pitch:.04*Math.abs(Math.cos(w)),lift:right.lift,reach:right.reach,liftL:left.lift,reachL:left.reach};
+  const right=footCycle(p,stride*(1-turn),height),left=footCycle((p+.5)%1,stride*(1+turn),height);
+  return {...rest,crouch:crouch+bob*Math.abs(Math.sin(w)),lean,roll:roll*Math.sin(w),yaw:yaw*Math.sin(w),
+    pitch:nod*Math.abs(Math.cos(w)),hipRoll:-hipRoll*Math.sin(w),lift:right.lift,reach:right.reach,liftL:left.lift,reachL:left.reach};
 }
 // cm/s the stance foot travels backward; the floor scrolls at this speed.
 export const stanceSpeed=({stride,cadence}=GAIT)=>4*stride*cadence;
