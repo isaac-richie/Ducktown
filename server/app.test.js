@@ -21,7 +21,7 @@ test('local API persists owner notes and never claims robot evidence',async t=>{
   assert.equal(health.hardwareConnected,false);
   assert.equal((await (await fetch(`${base}/api/v1/robots/pepper`)).json()).robot.mode,'simulation');
   const catalog=await (await fetch(`${base}/api/v1/behaviors`)).json();
-  assert.equal(catalog.behaviors.length,9);
+  assert.equal(catalog.behaviors.length,11);
   assert.ok(catalog.behaviors.every(item=>item.verification==='unverified'));
   assert.equal((await (await fetch(`${base}/api/v1/posts`)).json()).posts[0].id,'legacy');
   assert.equal((await (await fetch(`${base}/api/v1/auth/me`)).json()).user,null);

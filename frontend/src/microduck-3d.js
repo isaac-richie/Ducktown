@@ -397,18 +397,23 @@ class MicroduckView extends HTMLElement {
     this.robot.rotation.z=sway*.012;
     // Ready stance: knees always a little bent, with a soft bounce, like the real ducks.
     const crouch=.85+(motionEnabled()?breathe*.12:0)+motion.crouch;
-    this.robot.position.set(0,-crouch,0);
+    // Tipping rotates about the feet; lift by the shell's half-depth so the back rests on the floor.
+    // While lying, crouch tucks the legs toward the body instead of sinking it.
+    this.robot.rotation.x=-motion.tip;
+    this.robot.position.set(0,Math.sin(motion.tip)*3.4-crouch*Math.cos(motion.tip),0);
     const torso=this.robot.getObjectByName('torso');
     if(torso){torso.userData.baseY??=torso.position.y;torso.position.y=torso.userData.baseY+breathe*.04;torso.rotation.set(motion.lean,0,motion.roll*.4);}
     for(const side of ['left','right']){
-      const kicking=side==='right';
-      const leg=solveLeg(ANKLE_REST+crouch-(kicking?motion.lift:0),kicking?motion.reach:0);
+      const right=side==='right',lift=right?motion.lift:motion.liftL,reach=right?motion.reach:motion.reachL;
+      const leg=solveLeg(ANKLE_REST+crouch+lift,reach);
       this.rig[`leg-${side}`].rotation.x=leg.hip;
       this.rig[`shin-${side}`].rotation.x=leg.knee;
-      this.rig[`foot-${side}`].rotation.x=leg.foot-(kicking?motion.reach*.05:0);
+      this.rig[`foot-${side}`].rotation.x=leg.foot-reach*.05;
     }
     this.head.rotation.set(motion.pitch-motion.lean*.6+this.gaze.pitch+breathe*.012,motion.yaw+this.gaze.yaw+Math.sin(l*.41)*.035,motion.roll+sway*.02);
     this.neck.rotation.x=motion.neck;
+    if(motion.tip>.001)this.restOnFloor();
+    else if(this.groundLevel===undefined && !motion.lift && !motion.liftL)this.groundLevel=this.lowestPoint();
     this.jaw.rotation.x=Math.max(this.jawAngle,this.chirp||0,motion.jaw);
     this.robot.rotation.y=0;
     if(this.ball){
@@ -417,6 +422,23 @@ class MicroduckView extends HTMLElement {
     }
     // Feet remain planted. Gait/physics will come from the SDK, not decorative bobbing.
     this.dataset.poseTime=t.toFixed(3);
+  }
+  lowestPoint(){
+    // World-space bottom of the rig, from cached per-mesh bounding boxes.
+    let min=Infinity;const e=new THREE.Vector3();
+    this.robot.updateMatrixWorld(true);
+    this.robot.traverse(m=>{
+      if(!m.isMesh)return;
+      const bb=m.geometry.boundingBox||(m.geometry.computeBoundingBox(),m.geometry.boundingBox);
+      for(const x of [bb.min.x,bb.max.x])for(const y of [bb.min.y,bb.max.y])for(const z of [bb.min.z,bb.max.z]){
+        e.set(x,y,z).applyMatrix4(m.matrixWorld);if(e.y<min)min=e.y;
+      }
+    });
+    return min;
+  }
+  restOnFloor(){
+    // While tumbling, keep the shell resting on the floor instead of sinking or floating.
+    if(this.groundLevel!==undefined)this.robot.position.y+=this.groundLevel-this.lowestPoint();
   }
   draw(dt){
     if(!this.context || !initRenderer() || renderFailure)return;

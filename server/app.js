@@ -27,7 +27,9 @@ const behaviorCatalog=[
   {id:'duck-spot',name:'Spot a friend',origin:'illustrative',verification:'unverified'},
   {id:'sit-stand',name:'Sit & stand',origin:'illustrative',verification:'unverified'},
   {id:'kick',name:'Little kick',origin:'illustrative',verification:'unverified'},
-  {id:'grab',name:'Beak grab',origin:'illustrative',verification:'unverified'}
+  {id:'grab',name:'Beak grab',origin:'illustrative',verification:'unverified'},
+  {id:'get-up',name:'Get back up',origin:'illustrative',verification:'unverified'},
+  {id:'waddle',name:'Happy waddle',origin:'illustrative',verification:'unverified'}
 ];
 function readJson(req) {
   return new Promise((resolve,reject)=>{

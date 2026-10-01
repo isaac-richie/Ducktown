@@ -23,12 +23,12 @@ test('bow includes anticipation, a held greeting, and a settled finish',()=>{
 });
 
 test('new tricks loop cleanly and stay in a believable range',()=>{
-  for(const [name,duration] of Object.entries({'sit-stand':7,kick:5,grab:6})){
+  for(const [name,duration] of Object.entries({'sit-stand':7,kick:5,grab:6,'get-up':9,waddle:4.8})){
     const start=sampleMotion(name,0),end=sampleMotion(name,duration-.001);
     for(const key of Object.keys(start))assert.ok(Math.abs(start[key]-end[key])<.001,`${name} loop jumps`);
     for(let t=0;t<duration;t+=.01){
       const m=sampleMotion(name,t);
-      assert.ok(m.crouch<=3.6 && m.reach<=3.2 && m.jaw<=.34 && Math.abs(m.lean)<=.35,`${name} out of range`);
+      assert.ok(m.crouch<=3.6 && m.reach<=3.2 && m.tip<=1.6 && m.lift<=1.6 && m.liftL<=1.6 && m.jaw<=.34 && Math.abs(m.lean)<=.35,`${name} out of range`);
     }
   }
 });
@@ -42,4 +42,11 @@ test('leg solve keeps the rest pose and plants the ankle through a crouch',()=>{
     const k=rot([-3.65,-1.4],hip),a=rot([-4.5,1.4],hip+knee);
     assert.ok(Math.abs(k[0]+a[0]-(ANKLE_REST+crouch))<1e-6 && Math.abs(k[1]+a[1])<1e-6);
   }
+});
+
+test('get-up lies flat on the shell before rising, and the waddle alternates feet',()=>{
+  assert.ok(sampleMotion('get-up',3).tip>1.4);
+  assert.ok(sampleMotion('get-up',7.8).tip<.001);
+  assert.ok(sampleMotion('waddle',.8).lift>1 && sampleMotion('waddle',.8).liftL===0);
+  assert.ok(sampleMotion('waddle',2).liftL>1 && sampleMotion('waddle',2).lift===0);
 });
