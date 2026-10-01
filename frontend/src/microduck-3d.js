@@ -444,6 +444,8 @@ class MicroduckView extends HTMLElement {
     if(this.variant===variant || !PALETTES[variant])return;
     this.scene.remove(this.robot);
     this.robot=buildRobot(variant);this.scene.add(this.robot);
+    // The rebuilt illustrated duck stays hidden while Pollen's exact robot is on stage.
+    this.robot.visible=!this.policyRobot?.root.visible;
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
     for(const side of ['left','right'])for(const part of ['leg','shin','foot'])this.rig[`${part}-${side}`]=this.robot.getObjectByName(`${part}-${side}`);
     this.variant=variant;this.dataset.variant=variant;this.policyRobot?.setColorway(PALETTES[variant]);
