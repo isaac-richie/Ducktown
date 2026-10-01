@@ -25,6 +25,11 @@ const MODES = {
   walk: {label:'Real walk', icon:'≋', title:'A shuffle modelled on how Microduck walks. Hand-animated, not the trained policy.'},
   battle: {label:'Battle', icon:'⚡', title:'Just for fun: a stylised mech run, not a real Microduck gait.'}
 };
+// Orbit camera: free 360° yaw; pitch from underneath to straight above, stopping short of the
+// poles so the view never flips. 0.177 rad matches the original eye-level framing.
+const FOLLOW = .65;
+const PITCH = {min:-1.35, max:1.42, rest:.177};
+const VIEWS = [['Front',0,PITCH.rest,'Front'],['¾',.48,PITCH.rest,'Three-quarter'],['Side',1.4,PITCH.rest,'Side'],['Top',.48,1.35,'Top-down'],['Under',.48,-1.2,'Underneath']];
 const active = new Set();
 const templates = new Map();
 const geometryCache = new Map();
@@ -264,7 +269,7 @@ const resize=new ResizeObserver(entries=>{
 class MicroduckView extends HTMLElement {
   connectedCallback() {
     if(this.scene)return;
-    this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;
+    this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;this.pitch=PITCH.rest;this.targetPitch=PITCH.rest;this.focus={x:0,z:0};
     this.isHero=!!this.closest('.featured-stage');
     this.card=this.closest('.behavior-card');
     this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.life=0;this.gaze={yaw:0,pitch:0};this.targetGaze={yaw:0,pitch:0};this.chirpAt=2+Math.random()*4;this.mode='idle';this.battleBlend=0;this.walkBlend=0;this.gaitPhase=0;this.pathAngle=0;this.heading=0;this.faceBlend=0;this.gaitTotal=0;this.gaitParams=REAL_GAIT;this.gaitTurn=0;this.stompT=Infinity;this.shake=0;this.keyboardFocused=false;this.touchPressed=false;
@@ -316,7 +321,7 @@ class MicroduckView extends HTMLElement {
       };
       window.addEventListener('pointermove',this.onGaze,{passive:true});
       this.tabIndex=0;
-      this.title='Hover or focus to open the mouth. Drag to rotate. On touch screens, press and hold.';
+      this.title='Hover or focus to open the mouth. Drag to orbit all the way around, above and below; arrow keys work too. On touch screens, press and hold.';
       this.ball=new THREE.Mesh(new THREE.SphereGeometry(1.35,24,16),material('#d96248',.55));
       this.ball.castShadow=true;this.scene.add(this.ball);
       // Battle mode floor: painted stripes that scroll at foot speed so planted feet read as running.
@@ -331,12 +336,15 @@ class MicroduckView extends HTMLElement {
       this.makeControls();
       this.addEventListener('pointerdown',event=>{
         if(event.button!==0)return;
-        this.dragX=event.clientX;this.dragYaw=this.targetYaw;this.pressX=event.clientX;this.pressY=event.clientY;
+        this.dragX=event.clientX;this.dragY=event.clientY;this.dragYaw=this.targetYaw;this.dragPitch=this.targetPitch;this.pressX=event.clientX;this.pressY=event.clientY;
         this.setPointerCapture(event.pointerId);
       });
       this.addEventListener('pointermove',event=>{
         if(this.dragX===undefined)return;
-        this.targetYaw=Math.max(-1.45,Math.min(1.45,this.dragYaw+(event.clientX-this.dragX)*.009));
+        // Full 360° spin. Mouse/pen can also tilt: drag down to look from above, up to look from underneath.
+        // Touch keeps vertical swipes for page scrolling (Top/Under buttons cover those views).
+        this.targetYaw=this.dragYaw+(event.clientX-this.dragX)*.009;
+        if(event.pointerType!=='touch')this.targetPitch=Math.max(PITCH.min,Math.min(PITCH.max,this.dragPitch+(event.clientY-this.dragY)*.008));
         this.dirty=true;wake();
         for(const button of this.controls.children)button.setAttribute('aria-pressed','false');
       });
@@ -346,6 +354,13 @@ class MicroduckView extends HTMLElement {
         this.dragX=undefined;this.pressX=undefined;
       });
       this.addEventListener('pointercancel',()=>{this.dragX=undefined;});
+      this.addEventListener('keydown',event=>{
+        const step={ArrowLeft:[.2,0],ArrowRight:[-.2,0],ArrowUp:[0,.15],ArrowDown:[0,-.15]}[event.key];
+        if(!step)return;
+        event.preventDefault();
+        this.orbitTo(this.targetYaw+step[0],this.targetPitch+step[1]);
+        for(const button of this.controls.children)button.setAttribute('aria-pressed','false');
+      });
     }
     active.add(this);visibility.observe(this);resize.observe(this);wake();
   }
@@ -363,14 +378,14 @@ class MicroduckView extends HTMLElement {
   makeControls() {
     const group=document.createElement('div');group.className='robot-angle-controls';
     group.setAttribute('role','group');group.setAttribute('aria-label','Robot viewing angle');
-    for(const [label,yaw] of [['Front',0],['¾',.48],['Side',1.4]]){
+    for(const [label,yaw,pitch,name] of VIEWS){
       const button=document.createElement('button');button.type='button';button.textContent=label;
-      button.setAttribute('aria-label',`${label==='¾'?'Three-quarter':label} robot view`);
-      button.setAttribute('aria-pressed',String(yaw===.48));
+      button.setAttribute('aria-label',`${name} robot view`);
+      button.setAttribute('aria-pressed',String(label==='¾'));
       button.addEventListener('click',()=>{
-        this.targetYaw=yaw;this.dirty=true;
-        if(!motionEnabled())this.yaw=yaw;
-        for(const b of group.children)b.setAttribute('aria-pressed',String(b===button));wake();
+        // Take the short way round, however many times the view has been spun.
+        this.orbitTo(this.targetYaw+wrapAngle(yaw-this.targetYaw),pitch);
+        for(const b of group.children)b.setAttribute('aria-pressed',String(b===button));
       });group.append(button);
     }
     this.controls=group;this.parentElement.append(group);
@@ -422,7 +437,7 @@ class MicroduckView extends HTMLElement {
     const label=!webgl?'ROBOT ILLUSTRATION':
       this.mode==='battle'?`BATTLE · JUST FOR FUN, NOT A REAL GAIT · ${tap} TO STOMP`:
       this.mode==='walk'?`REAL WALK · HAND-ANIMATED SHUFFLE · ${tap} TO SAY HI`:
-      (touch?'HOLD TO OPEN · DRAG TO ROTATE':'HOVER TO OPEN · DRAG TO ROTATE');
+      (touch?'HOLD TO OPEN · SWIPE SIDEWAYS TO SPIN':'HOVER TO OPEN · DRAG TO ORBIT 360°');
     if(this.modeControls){
       this.modeControls.hidden=!webgl;
       for(const button of this.modeControls.children)button.disabled=!motionEnabled();
@@ -430,6 +445,11 @@ class MicroduckView extends HTMLElement {
     if(this.status && this.status.textContent!==label)this.status.textContent=label;
     if(this.controls && this.controls.hidden===webgl)this.controls.hidden=!webgl;
     if(this.variantControls && this.variantControls.hidden===webgl)this.variantControls.hidden=!webgl;
+  }
+  orbitTo(yaw,pitch){
+    this.targetYaw=yaw;this.targetPitch=Math.max(PITCH.min,Math.min(PITCH.max,pitch));
+    if(!motionEnabled()){this.yaw=this.targetYaw;this.pitch=this.targetPitch;}
+    this.dirty=true;wake();
   }
   setMode(mode){
     if(mode!=='idle' && !motionEnabled())return;
@@ -576,16 +596,21 @@ class MicroduckView extends HTMLElement {
     this.shake=motionEnabled()?footfall*.18+stompKick*.6:0;
     const g=motionEnabled()?1-Math.exp(-dt*(this.mode==='battle'?9:5)):1;
     this.gaze.yaw+=(this.targetGaze.yaw-this.gaze.yaw)*g;this.gaze.pitch+=(this.targetGaze.pitch-this.gaze.pitch)*g;
-    if(motionEnabled())this.yaw+=(this.targetYaw-this.yaw)*Math.min(1,dt*10);
-    else this.yaw=this.targetYaw;
+    if(motionEnabled()){const k=Math.min(1,dt*10);this.yaw+=(this.targetYaw-this.yaw)*k;this.pitch+=(this.targetPitch-this.pitch)*k;}
+    else {this.yaw=this.targetYaw;this.pitch=this.targetPitch;}
     if(motionEnabled())this.jawAngle+=(this.targetJawAngle-this.jawAngle)*(1-Math.exp(-dt*14));
     else this.jawAngle=this.targetJawAngle;
     if(Math.abs(this.targetJawAngle-this.jawAngle)<.001)this.jawAngle=this.targetJawAngle;
     this.pose();
     const jitter=this.shake*Math.sin(this.life*90);
-    this.camera.position.set(Math.sin(this.yaw)*58+jitter,23+this.shake*Math.cos(this.life*70),Math.cos(this.yaw)*58+1.6);
+    // Spherical orbit around the duck; the focus glides most of the way after it on its loop, so it
+    // stays in view from above or below while still visibly travelling around the stage.
+    const [px,pz]=this.pathPoint().map(v=>v*FOLLOW),follow=motionEnabled()?1-Math.exp(-dt*4):1;
+    this.focus.x+=(px-this.focus.x)*follow;this.focus.z+=(pz-this.focus.z)*follow;
+    const target=this.isHero?12.6:13,radius=58.9,flat=Math.cos(this.pitch)*radius,fx=this.focus.x,fz=this.focus.z+1.6;
+    this.camera.position.set(fx+Math.sin(this.yaw)*flat+jitter,target+Math.sin(this.pitch)*radius+this.shake*Math.cos(this.life*70),fz+Math.cos(this.yaw)*flat);
     // Frame the taller, forward-leaning silhouette (head rides ahead of the hips).
-    this.camera.lookAt(0,this.isHero?12.6:13,1.6);
+    this.camera.lookAt(fx,target,fz);
     const bounds=this.getBoundingClientRect();
     if(bounds.width<1 || bounds.height<1)return;
     const dpr=Math.min(devicePixelRatio||1,this.isHero?2:1.5),limit=this.isHero?1200:700,w=Math.min(limit,Math.round(bounds.width*dpr)),h=Math.min(limit,Math.round(bounds.height*dpr));
@@ -613,7 +638,7 @@ function tick(now){
   let continuous=false;
   for(const item of active){
     if(!item.visible)continue;
-    const changingAngle=Math.abs(item.targetYaw-item.yaw)>.001;
+    const changingAngle=Math.abs(item.targetYaw-item.yaw)+Math.abs(item.targetPitch-item.pitch)+Math.abs(item.focus.x-item.pathPoint()[0]*FOLLOW)+Math.abs(item.focus.z-item.pathPoint()[1]*FOLLOW)>.001;
     const changingJaw=Math.abs(item.targetJawAngle-item.jawAngle)>.001;
     const changingGaze=Math.abs(item.targetGaze.yaw-item.gaze.yaw)+Math.abs(item.targetGaze.pitch-item.gaze.pitch)>.001;
     const moving=item.isPlaying() || item.isAlive() || item.stompT<.7 || (item.battleBlend>0 && item.battleBlend<1) || item.walkBlend>0 || item.faceBlend%1>0 || changingAngle || changingJaw || changingGaze;

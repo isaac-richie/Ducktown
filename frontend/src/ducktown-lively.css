@@ -111,3 +111,5 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 @media(max-width:600px){.rail{grid-template-columns:1fr}.robot-card p,.robot-card small{font-size:11px}}
 /* Stacked sticker buttons need room for their offset shadows */
 .robot-card .button+.button{margin-top:10px}
+/* Orbiting the hero robot shouldn't select the stage's labels */
+.featured-stage{-webkit-user-select:none;user-select:none}
