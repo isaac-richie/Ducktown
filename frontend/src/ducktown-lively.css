@@ -4,7 +4,7 @@
 :root{--spring:cubic-bezier(.34,1.56,.64,1);--soft:cubic-bezier(.2,.8,.2,1);--ink-line:#172823;--sticker:2.5px solid var(--ink-line);--display:'Big Shoulders Display','Space Grotesk',sans-serif;--pop-1:#d8f073;--pop-2:#ff9968;--pop-3:#a9dbe8;--pop-4:#c2b0e0}
 
 /* Headlines: tall, condensed, with an offset citrus shadow */
-.pond-heading h1,.page-head h1,.profile-hero h1,.arena-hero h1,.map-hero h1{font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:.92;text-shadow:3px 3px 0 var(--pop-1),6px 6px 0 rgba(23,40,35,.12)}
+.pond-heading h1,.page-head h1,.profile-hero h1,.arena-hero h1,.map-hero h1{font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:.92;color:var(--ink-line);text-shadow:none}
 .section-kicker{color:#c35d2a;letter-spacing:.2em}
 
 /* Sticker cards: thick outline, solid offset shadow, colour rotates per card */
@@ -73,7 +73,8 @@ microduck-view:not([data-renderer])::after{content:'Waking up the duck…';posit
 @media(max-width:420px){.learn-strip{grid-template-columns:1fr}}
 .nav-item.active .nav-key{color:#2c4a3d}
 .learn-strip span{color:#4f5f58}
-:is(.pond-heading,.page-head) h1 :is(span,em){text-shadow:3px 3px 0 var(--ink-line)}
+/* Accent line: one solid colour, no gradient fill or stacked shadows, so the headline reads cleanly */
+:is(.pond-heading,.page-head,.profile-hero,.arena-hero,.map-hero) h1 :is(span,em){font-style:normal;color:#c35d2a;background:none;-webkit-text-fill-color:currentColor;text-shadow:none}
 
 /* Battle mode: a hotter stage while it runs */
 .featured-stage.is-battle:before{background:repeating-conic-gradient(from 0deg at 50% 62%,rgba(255,153,104,.16) 0 6deg,transparent 6deg 18deg);animation-duration:8s}

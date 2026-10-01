@@ -18,6 +18,9 @@ const NECK_LEAN = .34, HEAD_LEVEL = -.26;
 // Kept nearly round: tight ends would make the planted feet skid on the turns.
 const PATH = {x:7, z:6};
 const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
+// Laps left until the walk loop is back at its start (0 when home).
+const toHome = a => ((Math.PI*2 - a % (Math.PI*2)) % (Math.PI*2));
+const mixGait = (a, b, t) => Object.fromEntries(Object.keys(a).map(key => [key, a[key] + (b[key] - a[key]) * t]));
 const MODES = {
   walk: {label:'Real walk', icon:'≋', title:'A shuffle modelled on how Microduck walks. Hand-animated, not the trained policy.'},
   battle: {label:'Battle', icon:'⚡', title:'Just for fun: a stylised mech run, not a real Microduck gait.'}
@@ -264,7 +267,7 @@ class MicroduckView extends HTMLElement {
     this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;
     this.isHero=!!this.closest('.featured-stage');
     this.card=this.closest('.behavior-card');
-    this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.life=0;this.gaze={yaw:0,pitch:0};this.targetGaze={yaw:0,pitch:0};this.chirpAt=2+Math.random()*4;this.mode='idle';this.battleBlend=0;this.walkBlend=0;this.gaitPhase=0;this.walkPhase=0;this.pathAngle=0;this.heading=0;this.stompT=Infinity;this.shake=0;this.keyboardFocused=false;this.touchPressed=false;
+    this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.life=0;this.gaze={yaw:0,pitch:0};this.targetGaze={yaw:0,pitch:0};this.chirpAt=2+Math.random()*4;this.mode='idle';this.battleBlend=0;this.walkBlend=0;this.gaitPhase=0;this.pathAngle=0;this.heading=0;this.faceBlend=0;this.gaitTotal=0;this.gaitParams=REAL_GAIT;this.gaitTurn=0;this.stompT=Infinity;this.shake=0;this.keyboardFocused=false;this.touchPressed=false;
     this.variant=this.dataset.variant||'cream';
     this.scene=new THREE.Scene();
     this.scene.add(new THREE.HemisphereLight('#fff7e8','#526961',.85));
@@ -430,8 +433,8 @@ class MicroduckView extends HTMLElement {
   }
   setMode(mode){
     if(mode!=='idle' && !motionEnabled())return;
-    // Leaving a walk, the duck finishes its lap and stops at home instead of sliding back.
-    this.returning=mode!=='walk' && this.walkBlend>0 && motionEnabled();
+    // Switching off away from home, the duck walks the rest of its lap back instead of sliding.
+    this.returning=mode==='idle' && toHome(this.pathAngle)>.02 && motionEnabled();
     this.mode=mode;
     for(const button of this.modeControls?.children||[])button.setAttribute('aria-pressed',String(button.dataset.mode===mode));
     this.closest('.featured-stage')?.classList.toggle('is-battle',mode==='battle');
@@ -453,9 +456,10 @@ class MicroduckView extends HTMLElement {
   }
   pose(){
     const t=this.time, l=this.life, motion=sampleMotion(this.behavior,t);
-    for(const [k,phase,params,turn] of [[this.walkBlend,this.walkPhase,REAL_GAIT,this.turn||0],[this.battleBlend,this.gaitPhase,GAIT,0]]){
-      if(k<=0)continue;
-      const gait=sampleGait(phase,params,turn);
+    if(this.gaitTotal>0){
+      // One gait, one step rhythm: switching modes morphs stride, speed and stance instead of
+      // crossfading two out-of-step cycles.
+      const gait=sampleGait(this.gaitPhase,this.gaitParams,this.gaitTurn),k=this.gaitTotal;
       for(const key in motion)motion[key]+=(gait[key]-motion[key])*k;
     }
     if(this.stompT<.7){
@@ -471,7 +475,7 @@ class MicroduckView extends HTMLElement {
     // Tipping rotates about the feet; lift by the shell's half-depth so the back rests on the floor.
     // While lying, crouch tucks the legs toward the body instead of sinking it.
     this.robot.rotation.x=-motion.tip;
-    const path=this.pathPoint(),w=this.walkBlend;
+    const path=this.pathPoint(),w=1;
     // Rocking over a foot sinks that foot's outer edge; lift by the same amount so it rests on the floor.
     const rock=Math.sin(Math.abs(motion.hipRoll))*5.35;
     this.robot.position.set(path[0]*w,Math.sin(motion.tip)*3.4-crouch*Math.cos(motion.tip)+rock,path[1]*w);
@@ -489,7 +493,7 @@ class MicroduckView extends HTMLElement {
     if(motion.tip>.001)this.restOnFloor();
     else if(this.groundLevel===undefined && !motion.lift && !motion.liftL)this.groundLevel=this.lowestPoint();
     this.jaw.rotation.x=Math.max(this.jawAngle,this.chirp||0,motion.jaw);
-    this.robot.rotation.y=wrapAngle(this.heading)*this.walkBlend;
+    this.robot.rotation.y=wrapAngle(this.heading)*this.faceBlend;
     if(this.ball){
       this.ball.position.set(motion.ball,1.13,3);
       this.ball.rotation.z=-this.ball.position.x/1.35;
@@ -529,27 +533,41 @@ class MicroduckView extends HTMLElement {
       if(since>=.5)this.chirpAt=this.life+3+Math.random()*5;
     }else this.chirp=0;
     if(!motionEnabled() && this.mode!=='idle')this.setMode('idle');
-    const ramp=motionEnabled()?1-Math.exp(-dt*3):1,blend=(value,target)=>Math.abs(target-value)<.002?target:value+(target-value)*ramp;
-    if(this.returning && Math.cos(this.pathAngle)>=.995 && Math.sin(this.pathAngle)>=0)this.returning=false;
+    const ramp=motionEnabled()?1-Math.exp(-dt*5):1,blend=(value,target)=>Math.abs(target-value)<.002?target:value+(target-value)*ramp;
+    const remaining=toHome(this.pathAngle);
+    if(this.returning && (remaining<.02 || this.mode!=='idle')){this.returning=false;if(remaining<.02)this.pathAngle=0;}
     this.walkBlend=blend(this.walkBlend,this.mode==='walk'||this.returning?1:0);
-    this.battleBlend=blend(this.battleBlend,this.mode==='battle'&&this.walkBlend===0?1:0);
-    if(this.walkBlend>0){
-      this.walkPhase=(this.walkPhase+dt*REAL_GAIT.cadence*this.walkBlend)%1;
-      // Advance along the loop at stance speed so the planted foot stays put on the floor.
+    // Ease into home over the last stretch so the duck stops on its spot rather than overshooting.
+    if(this.returning)this.walkBlend=Math.min(this.walkBlend,Math.max(.08,remaining/.6));
+    this.battleBlend=blend(this.battleBlend,this.mode==='battle'?1:0);
+    const sum=this.walkBlend+this.battleBlend,share=sum>0?this.battleBlend/sum:0;
+    this.gaitTotal=Math.min(1,sum);this.gaitParams=mixGait(REAL_GAIT,GAIT,share);
+    this.gaitPhase=(this.gaitPhase+dt*this.gaitParams.cadence*this.gaitTotal)%1;
+    // The planted foot slides back at stanceSpeed: the walk share carries the body forward along
+    // the loop, the battle share scrolls the floor stripes instead (running on the spot).
+    const footSpeed=stanceSpeed(this.gaitParams)*this.gaitTotal,scroll=footSpeed*share;
+    // Once idle and home, the fading gait settles in place rather than creeping past the start.
+    const travel=this.mode!=='idle'||this.returning?footSpeed*(1-share):0;
+    if(travel>0){
       const tangent=Math.hypot(PATH.x*Math.cos(this.pathAngle),PATH.z*Math.sin(this.pathAngle));
-      this.pathAngle+=dt*stanceSpeed(REAL_GAIT)*this.walkBlend/Math.max(.5,tangent);
+      this.pathAngle+=dt*travel/Math.max(.5,tangent);
       const θ=this.pathAngle,dx=PATH.x*Math.cos(θ),dz=-PATH.z*Math.sin(θ),ddx=-PATH.x*Math.sin(θ),ddz=-PATH.z*Math.cos(θ);
       this.heading+=wrapAngle(Math.atan2(dx,dz)-this.heading);
       // Signed curvature (heading change per cm) × the feet's 3.65 cm offset from the centre line.
       this.turn=Math.max(-.85,Math.min(.85,(dz*ddx-dx*ddz)/Math.hypot(dx,dz)**3*3.65));
-    }else{this.pathAngle=0;this.heading=0;}
-    const speedUp=this.battleBlend;
-    this.gaitPhase=(this.gaitPhase+dt*GAIT.cadence*speedUp)%1;
+    }
+    this.gaitTurn=(this.turn||0)*(1-share);
+    if(sum===0 && toHome(this.pathAngle)<.02)this.pathAngle=0;
+    // Face along the loop while away from home or walking; turn back to the camera once home.
+    this.faceBlend=blend(this.faceBlend,this.mode==='walk'||toHome(this.pathAngle)>.02?1:0);
     if(this.stompT<.7)this.stompT+=dt;
     if(this.track){
       this.track.material.opacity=.9*this.battleBlend;
-      // The plane's v axis points backward (world -z); lowering the offset carries stripes backward with the planted foot.
-      this.track.material.map.offset.y=(this.track.material.map.offset.y-dt*speedUp*stanceSpeed()/16+1)%1;
+      // The track sits under the duck wherever it is on the loop, aligned with its heading.
+      const [tx,tz]=this.pathPoint();this.track.position.set(tx,-.2,tz);
+      this.track.rotation.set(-Math.PI/2,wrapAngle(this.heading)*this.faceBlend,0,'YXZ');
+      // The plane's v axis points backward along the duck; lowering the offset carries stripes back with the planted foot.
+      this.track.material.map.offset.y=(this.track.material.map.offset.y-dt*scroll/16+1)%1;
     }
     if(this.ball)this.ball.visible=this.battleBlend<.5&&this.walkBlend<.5;
     // Footfall impact: a small camera kick each time a foot plants, plus a big one for a stomp.
@@ -598,7 +616,7 @@ function tick(now){
     const changingAngle=Math.abs(item.targetYaw-item.yaw)>.001;
     const changingJaw=Math.abs(item.targetJawAngle-item.jawAngle)>.001;
     const changingGaze=Math.abs(item.targetGaze.yaw-item.gaze.yaw)+Math.abs(item.targetGaze.pitch-item.gaze.pitch)>.001;
-    const moving=item.isPlaying() || item.isAlive() || item.stompT<.7 || (item.battleBlend>0 && item.battleBlend<1) || item.walkBlend>0 || changingAngle || changingJaw || changingGaze;
+    const moving=item.isPlaying() || item.isAlive() || item.stompT<.7 || (item.battleBlend>0 && item.battleBlend<1) || item.walkBlend>0 || item.faceBlend%1>0 || changingAngle || changingJaw || changingGaze;
     if(item.dirty || moving){
       try{item.draw(dt);}catch(error){item.dataset.renderer='fallback';item.updateStatus();console.warn('Ducktown model render failed',error);}
     }
