@@ -24,7 +24,8 @@ const toHome = a => ((Math.PI*2 - a % (Math.PI*2)) % (Math.PI*2));
 const mixGait = (a, b, t) => Object.fromEntries(Object.keys(a).map(key => [key, a[key] + (b[key] - a[key]) * t]));
 const MODES = {
   walk: {label:'Real walk', icon:'≋', title:'A shuffle modelled on how Microduck walks. Hand-animated, not the trained policy.'},
-  battle: {label:'Battle', icon:'⚡', title:'Just for fun: a stylised mech run, not a real Microduck gait.'}
+  battle: {label:'Battle', icon:'⚡', title:'Just for fun: a stylised mech run, not a real Microduck gait.'},
+  policy: {label:'Real policies', icon:'◆', title:"Pollen's official trained policies on Pollen's exact robot, replayed from a MuJoCo simulation."}
 };
 // Orbit camera: free 360° yaw; pitch from underneath to straight above, stopping short of the
 // poles so the view never flips. 0.177 rad matches the original eye-level framing.
@@ -375,7 +376,7 @@ class MicroduckView extends HTMLElement {
   disconnectedCallback() {
     active.delete(this);visibility.unobserve(this);if(this.onGaze)window.removeEventListener('pointermove',this.onGaze);resize.unobserve(this);
     if(this.card)for(const event of ['pointerenter','pointerleave','focusin','focusout'])this.card.removeEventListener(event,this.cardWake);
-    this.controls?.remove();this.variantControls?.remove();this.modeControls?.remove();this.track?.geometry.dispose();this.track?.material.map.dispose();this.track?.material.dispose();this.status?.remove();
+    this.controls?.remove();this.variantControls?.remove();this.modeControls?.remove();this.clipControls?.remove();this.policyRobot?.dispose();this.track?.geometry.dispose();this.track?.material.map.dispose();this.track?.material.dispose();this.status?.remove();
     // Shared robot geometry/materials are retained by the four template rigs.
     this.ball?.geometry.dispose();this.ball?.material.dispose();
     this.floor?.geometry.dispose();this.floor?.material.dispose();this.city?.dispose();
@@ -407,6 +408,18 @@ class MicroduckView extends HTMLElement {
       modes.append(button);
     }
     this.modeControls=modes;this.parentElement.append(modes);
+    // Clip picker for the real-policy replays (shown only in that mode).
+    const clips=document.createElement('div');clips.className='robot-clip-controls';clips.hidden=true;
+    clips.setAttribute('role','group');clips.setAttribute('aria-label','Pollen policy replay');
+    import('./policy-replay.js').then(({POLICY_CLIPS})=>{
+      for(const clip of POLICY_CLIPS){
+        const button=document.createElement('button');button.type='button';button.dataset.clip=clip.id;
+        button.textContent=clip.label;button.title=clip.note;button.setAttribute('aria-pressed',String(clip.id===this.clipName));
+        button.addEventListener('click',()=>this.playClip(clip.id));
+        clips.append(button);
+      }
+    });
+    this.clipControls=clips;this.parentElement.append(clips);
     const shellControls=document.createElement('div');
     shellControls.className='robot-shell-controls';
     shellControls.setAttribute('role','group');
@@ -431,7 +444,7 @@ class MicroduckView extends HTMLElement {
     this.robot=buildRobot(variant);this.scene.add(this.robot);
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
     for(const side of ['left','right'])for(const part of ['leg','shin','foot'])this.rig[`${part}-${side}`]=this.robot.getObjectByName(`${part}-${side}`);
-    this.variant=variant;this.dataset.variant=variant;
+    this.variant=variant;this.dataset.variant=variant;this.policyRobot?.setShell(PALETTES[variant].shell);
     this.setAttribute('aria-label',`Three-dimensional visual study of a ${variant} Microduck robot`);
     for(const button of this.variantControls.querySelectorAll('button')){
       button.setAttribute('aria-pressed',String(button.getAttribute('aria-label').toLowerCase().startsWith(variant)));
@@ -445,6 +458,7 @@ class MicroduckView extends HTMLElement {
     const label=!webgl?'ROBOT ILLUSTRATION':
       this.mode==='battle'?`BATTLE · JUST FOR FUN, NOT A REAL GAIT · ${tap} TO STOMP`:
       this.mode==='walk'?`REAL WALK · HAND-ANIMATED SHUFFLE · ${tap} TO SAY HI`:
+      this.mode==='policy'?(this.clip?`SIMULATED · POLLEN'S OFFICIAL POLICY · ${this.clipNote.toUpperCase()} · ${tap} TO REPLAY`:'LOADING POLLEN\'S ROBOT…'):
       (touch?'HOLD TO OPEN · SWIPE SIDEWAYS TO SPIN':'HOVER TO OPEN · DRAG TO ORBIT 360°');
     if(this.modeControls){
       this.modeControls.hidden=!webgl;
@@ -466,11 +480,36 @@ class MicroduckView extends HTMLElement {
     this.mode=mode;
     for(const button of this.modeControls?.children||[])button.setAttribute('aria-pressed',String(button.dataset.mode===mode));
     this.closest('.featured-stage')?.classList.toggle('is-battle',mode==='battle');
-    this.closest('.featured-stage')?.classList.toggle('is-walk',mode==='walk');
+    this.closest('.featured-stage')?.classList.toggle('is-walk',mode==='walk'||mode==='policy');
+    if(this.clipControls)this.clipControls.hidden=mode!=='policy';
+    if(mode==='policy')this.playClip(this.clipName||'kick_right');
+    else if(this.policyRobot){this.policyRobot.root.visible=false;this.robot.visible=true;}
     this.updateStatus();this.dirty=true;wake();
+  }
+  async playClip(name){
+    // Load Pollen's exact robot once, then swap it in for the hand-built duck while replaying.
+    this.clipName=name;
+    for(const b of this.clipControls?.children||[])b.setAttribute('aria-pressed',String(b.dataset.clip===name));
+    try{
+      const replay=await import('./policy-replay.js');
+      if(!this.policyRobot){
+        this.policyRobot=await replay.loadPolicyRobot();
+        this.policyRobot.root.matrix.premultiply(new THREE.Matrix4().makeTranslation(0,-.24,0));
+        this.policyRobot.setShell(PALETTES[this.variant].shell);
+        this.scene?.add(this.policyRobot.root);
+      }
+      const clip=await replay.loadClip(name);
+      if(this.clipName!==name || !this.scene)return;
+      this.replay=replay;this.clip=clip;this.clipTime=0;
+      this.clipNote=replay.POLICY_CLIPS.find(c=>c.id===name).note;
+      const on=this.mode==='policy';
+      this.policyRobot.root.visible=on;this.robot.visible=!on;
+      this.updateStatus();this.dirty=true;wake();
+    }catch(error){console.warn('Ducktown: policy replay unavailable.',error);}
   }
   stomp(){
     if(!motionEnabled())return;
+    if(this.mode==='policy'){this.clipTime=0;this.dirty=true;wake();return;}
     this.stompT=0;this.stompScale=this.mode==='walk'?.45:1;this.dirty=true;wake();
   }
   isPlaying(){
@@ -480,7 +519,7 @@ class MicroduckView extends HTMLElement {
   }
   isAlive(){
     // Ambient life (breathing, weight shift, gaze) keeps the hero feeling present; cards wake on hover.
-    return motionEnabled() && this.visible && (this.isHero || this.isPlaying() || this.battleBlend>0 || this.walkBlend>0) && !this.stage?.classList.contains('is-paused');
+    return motionEnabled() && this.visible && (this.isHero || this.isPlaying() || this.battleBlend>0 || this.walkBlend>0 || this.mode==='policy') && !this.stage?.classList.contains('is-paused');
   }
   pose(){
     const t=this.time, l=this.life, motion=sampleMotion(this.behavior,t);
@@ -669,7 +708,14 @@ class MicroduckView extends HTMLElement {
     const jitter=this.shake*Math.sin(this.life*90);
     // Spherical orbit around the duck; the focus glides most of the way after it on its loop, so it
     // stays in view from above or below while still visibly travelling around the stage.
-    const [px,pz]=this.pathPoint().map(v=>v*FOLLOW),follow=motionEnabled()?1-Math.exp(-dt*4):1;
+    const replaying=this.mode==='policy'&&this.clip;
+    if(replaying){
+      // Real replay: advance the sim clock, hold the last frame a moment, then loop.
+      if(motionEnabled())this.clipTime+=dt;
+      if(this.clipTime>this.clip.duration+1.2)this.clipTime=0;
+      this.replay.applyClip(this.policyRobot,this.clip,Math.min(this.clipTime,this.clip.duration));
+    }
+    const [px,pz]=replaying?this.replay.clipTrunk(this.clip,Math.min(this.clipTime,this.clip.duration)).map(v=>v*FOLLOW):this.pathPoint().map(v=>v*FOLLOW),follow=motionEnabled()?1-Math.exp(-dt*4):1;
     this.focus.x+=(px-this.focus.x)*follow;this.focus.z+=(pz-this.focus.z)*follow;
     const target=this.isHero?12.6:13,radius=this.isHero?HERO_RADIUS:CARD_RADIUS,flat=Math.cos(this.pitch)*radius,fx=this.focus.x,fz=this.focus.z+1.6;
     this.camera.position.set(fx+Math.sin(this.yaw)*flat+jitter,target+Math.sin(this.pitch)*radius+this.shake*Math.cos(this.life*70),fz+Math.cos(this.yaw)*flat);

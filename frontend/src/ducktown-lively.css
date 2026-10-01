@@ -120,3 +120,12 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .featured-stage microduck-view.duck-graphic{z-index:1}
 .featured-stage :is(.stage-top,.stage-bottom,.stage-coordinate,.robot-render-label){z-index:3}
 .featured-stage .stage-top>*{background:rgba(16,33,29,.62);backdrop-filter:blur(6px);border-radius:8px;padding:5px 9px}
+
+/* Real-policy clip picker, above the mode buttons */
+.robot-clip-controls{position:absolute;z-index:4;right:26px;bottom:160px;display:flex;gap:5px;padding:4px;border-radius:10px;background:rgba(16,33,29,.62);backdrop-filter:blur(6px)}
+.robot-clip-controls[hidden]{display:none}
+.robot-clip-controls button{border:0;border-radius:7px;padding:7px 11px;background:transparent;color:#e8efe0;font:800 9px 'Space Grotesk';letter-spacing:.08em;text-transform:uppercase}
+.robot-clip-controls button[aria-pressed="true"]{background:var(--pop-1);color:#173a33}
+@media(max-width:760px){.robot-clip-controls{bottom:150px}.robot-clip-controls button{min-height:40px}}
+@media(max-width:600px){.robot-clip-controls{right:16px;bottom:252px}}
+@media(min-width:601px){.featured-stage .robot-render-label{margin-bottom:3px;padding-block:2px}}

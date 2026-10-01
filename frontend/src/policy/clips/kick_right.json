@@ -1,0 +1,27 @@
+{
+ "name": "kick_right",
+ "hz": 50,
+ "frames": 250,
+ "bodies": [
+  "trunk_base",
+  "yaw2roll",
+  "hip_l",
+  "upper_leg_left",
+  "leg",
+  "ankle_left",
+  "neck",
+  "neck_pitch",
+  "yaw_roll_motion",
+  "jaw_soft",
+  "bearing_roll",
+  "hip_l_2",
+  "upper_leg_right",
+  "leg_2",
+  "ankle_right",
+  "ball"
+ ],
+ "layout": "frame,body,[x,y,z (0.1mm), qw,qx,qy,qz (/32767)] int16 LE",
+ "policy_set": "pollen-robotics/microduck-policies",
+ "simulated": true,
+ "fell": false
+}
