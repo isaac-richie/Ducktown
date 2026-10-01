@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { sampleMotion } from './robot-motion.js';
+import { sampleMotion, solveLeg, ANKLE_REST } from './robot-motion.js';
 
 // Original, photo-referenced presentation geometry; no Pollen CAD or meshes.
 // Units are visual centimetres, NOT calibrated SDK dimensions or joint frames.
@@ -249,7 +249,7 @@ class MicroduckView extends HTMLElement {
     this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;
     this.isHero=!!this.closest('.featured-stage');
     this.card=this.closest('.behavior-card');
-    this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.keyboardFocused=false;this.touchPressed=false;
+    this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.life=0;this.gaze={yaw:0,pitch:0};this.targetGaze={yaw:0,pitch:0};this.chirpAt=2+Math.random()*4;this.keyboardFocused=false;this.touchPressed=false;
     this.variant=this.dataset.variant||'cream';
     this.scene=new THREE.Scene();
     this.scene.add(new THREE.HemisphereLight('#fff7e8','#526961',.85));
@@ -289,6 +289,14 @@ class MicroduckView extends HTMLElement {
     this.addEventListener('focus',()=>{this.keyboardFocused=this.matches(':focus-visible');updateJaw();});
     this.addEventListener('blur',()=>{this.keyboardFocused=false;updateJaw();});
     if(this.isHero){
+      // Curious gaze: the hero duck glances toward the pointer anywhere on the page.
+      this.onGaze=event=>{
+        if(this.dragX!==undefined || event.pointerType==='touch')return;
+        const b=this.getBoundingClientRect();if(b.width<1)return;
+        const nx=(event.clientX-(b.left+b.width/2))/Math.max(320,innerWidth/2),ny=(event.clientY-(b.top+b.height*.35))/Math.max(320,innerHeight/2);
+        this.targetGaze.yaw=Math.max(-.42,Math.min(.42,nx*.5));this.targetGaze.pitch=Math.max(-.16,Math.min(.2,ny*.22));wake();
+      };
+      window.addEventListener('pointermove',this.onGaze,{passive:true});
       this.tabIndex=0;
       this.title='Hover or focus to open the mouth. Drag to rotate. On touch screens, press and hold.';
       this.ball=new THREE.Mesh(new THREE.SphereGeometry(1.35,24,16),material('#d96248',.55));
@@ -311,7 +319,7 @@ class MicroduckView extends HTMLElement {
     active.add(this);visibility.observe(this);resize.observe(this);wake();
   }
   disconnectedCallback() {
-    active.delete(this);visibility.unobserve(this);resize.unobserve(this);
+    active.delete(this);visibility.unobserve(this);if(this.onGaze)window.removeEventListener('pointermove',this.onGaze);resize.unobserve(this);
     if(this.card)for(const event of ['pointerenter','pointerleave','focusin','focusout'])this.card.removeEventListener(event,this.cardWake);
     this.controls?.remove();this.variantControls?.remove();this.status?.remove();
     // Shared robot geometry/materials are retained by the four template rigs.
@@ -378,18 +386,30 @@ class MicroduckView extends HTMLElement {
       (!this.card || this.card.matches(':hover,:focus-within') || this.touchPressed) &&
       !(document.body.classList.contains('has-modal') && this.closest('#view'));
   }
+  isAlive(){
+    // Ambient life (breathing, weight shift, gaze) keeps the hero feeling present; cards wake on hover.
+    return motionEnabled() && this.visible && (this.isHero || this.isPlaying()) && !this.stage?.classList.contains('is-paused');
+  }
   pose(){
-    const t=this.time, motion=sampleMotion(this.behavior,t);
-    this.robot.rotation.z=0;
-    this.robot.position.x=0;
+    const t=this.time, motion=sampleMotion(this.behavior,t), l=this.life;
+    const breathe=Math.sin(l*1.9), sway=Math.sin(l*.73)*.6+Math.sin(l*1.31)*.4;
+    // Expressive overlay is tiny so authored clips still read clearly; feet stay planted.
+    this.robot.rotation.z=sway*.012;
+    // Ready stance: knees always a little bent, with a soft bounce, like the real ducks.
+    const crouch=.85+(motionEnabled()?breathe*.12:0)+motion.crouch;
+    this.robot.position.set(0,-crouch,0);
+    const torso=this.robot.getObjectByName('torso');
+    if(torso){torso.userData.baseY??=torso.position.y;torso.position.y=torso.userData.baseY+breathe*.04;torso.rotation.set(motion.lean,0,motion.roll*.4);}
     for(const side of ['left','right']){
-      this.rig[`leg-${side}`].rotation.x=0;
-      this.rig[`shin-${side}`].rotation.x=0;
-      this.rig[`foot-${side}`].rotation.x=0;
+      const kicking=side==='right';
+      const leg=solveLeg(ANKLE_REST+crouch-(kicking?motion.lift:0),kicking?motion.reach:0);
+      this.rig[`leg-${side}`].rotation.x=leg.hip;
+      this.rig[`shin-${side}`].rotation.x=leg.knee;
+      this.rig[`foot-${side}`].rotation.x=leg.foot-(kicking?motion.reach*.05:0);
     }
-    this.head.rotation.set(motion.pitch,motion.yaw,motion.roll);
+    this.head.rotation.set(motion.pitch-motion.lean*.6+this.gaze.pitch+breathe*.012,motion.yaw+this.gaze.yaw+Math.sin(l*.41)*.035,motion.roll+sway*.02);
     this.neck.rotation.x=motion.neck;
-    this.jaw.rotation.x=this.jawAngle;
+    this.jaw.rotation.x=Math.max(this.jawAngle,this.chirp||0,motion.jaw);
     this.robot.rotation.y=0;
     if(this.ball){
       this.ball.position.set(motion.ball,1.13,3);
@@ -401,6 +421,15 @@ class MicroduckView extends HTMLElement {
   draw(dt){
     if(!this.context || !initRenderer() || renderFailure)return;
     if(this.isPlaying())this.time+=dt;
+    if(this.isAlive()){
+      this.life+=dt;
+      // Occasional happy chirp: a quick jaw flick, like a duck saying hi.
+      const since=this.life-this.chirpAt;
+      this.chirp=since>0&&since<.5?Math.sin(since/.5*Math.PI*2)**2*.22:0;
+      if(since>=.5)this.chirpAt=this.life+3+Math.random()*5;
+    }else this.chirp=0;
+    const g=motionEnabled()?1-Math.exp(-dt*5):1;
+    this.gaze.yaw+=(this.targetGaze.yaw-this.gaze.yaw)*g;this.gaze.pitch+=(this.targetGaze.pitch-this.gaze.pitch)*g;
     if(motionEnabled())this.yaw+=(this.targetYaw-this.yaw)*Math.min(1,dt*10);
     else this.yaw=this.targetYaw;
     if(motionEnabled())this.jawAngle+=(this.targetJawAngle-this.jawAngle)*(1-Math.exp(-dt*14));
@@ -431,14 +460,15 @@ function tick(now){
   frame=0;
   if(document.hidden || renderFailure)return;
   const dt=Math.min((now-lastTick)/1000,.06);
-  if(now-lastTick<1000/30){wake();return;}
+  if(now-lastTick<1000/60-2){wake();return;}
   lastTick=now;
   let continuous=false;
   for(const item of active){
     if(!item.visible)continue;
     const changingAngle=Math.abs(item.targetYaw-item.yaw)>.001;
     const changingJaw=Math.abs(item.targetJawAngle-item.jawAngle)>.001;
-    const moving=item.isPlaying() || changingAngle || changingJaw;
+    const changingGaze=Math.abs(item.targetGaze.yaw-item.gaze.yaw)+Math.abs(item.targetGaze.pitch-item.gaze.pitch)>.001;
+    const moving=item.isPlaying() || item.isAlive() || changingAngle || changingJaw || changingGaze;
     if(item.dirty || moving){
       try{item.draw(dt);}catch(error){item.dataset.renderer='fallback';item.updateStatus();console.warn('Ducktown model render failed',error);}
     }

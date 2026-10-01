@@ -119,7 +119,7 @@ export class Store {
   listSaves(userId){return this.state.saves.filter(item=>item.userId===userId).map(item=>({kind:item.kind,id:item.id}));}
   setSave(userId,kind,id,saved){return this.mutate(state=>{
     if(kind==='post'&&!state.posts.some(item=>item.id===id&&!item.hidden))throw missing('Post not found');
-    if(kind==='idea'&&!['ball-follow','polite-bow','balance-back','hello-wave','tiny-dance','duck-spot'].includes(id))throw missing('Idea not found');
+    if(kind==='idea'&&!['ball-follow','polite-bow','balance-back','hello-wave','tiny-dance','duck-spot','sit-stand','kick','grab'].includes(id))throw missing('Idea not found');
     if(kind==='challenge'&&!['greeting','red-ball','balance','dance'].includes(id))throw missing('Challenge not found');
     const index=state.saves.findIndex(item=>item.userId===userId&&item.kind===kind&&item.id===id);
     if(saved&&index<0)state.saves.push({userId,kind,id,createdAt:new Date().toISOString()});

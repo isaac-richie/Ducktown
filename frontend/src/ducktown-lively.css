@@ -1,0 +1,76 @@
+/* Lively layer: bold, sticker-like Ducktown look with springy motion.
+   Inspired by the Microduck family's playful energy, in Ducktown's own forest/citrus palette. */
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&display=swap');
+:root{--spring:cubic-bezier(.34,1.56,.64,1);--soft:cubic-bezier(.2,.8,.2,1);--ink-line:#172823;--sticker:2.5px solid var(--ink-line);--display:'Big Shoulders Display','Space Grotesk',sans-serif;--pop-1:#d8f073;--pop-2:#ff9968;--pop-3:#a9dbe8;--pop-4:#c2b0e0}
+
+/* Headlines: tall, condensed, with an offset citrus shadow */
+.pond-heading h1,.page-head h1,.profile-hero h1,.arena-hero h1,.map-hero h1{font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:.92;text-shadow:3px 3px 0 var(--pop-1),6px 6px 0 rgba(23,40,35,.12)}
+.section-kicker{color:#c35d2a;letter-spacing:.2em}
+
+/* Sticker cards: thick outline, solid offset shadow, colour rotates per card */
+.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card{--pop:var(--pop-1);border:var(--sticker)!important;border-radius:16px;box-shadow:6px 6px 0 var(--pop)!important;transition:transform .4s var(--spring),box-shadow .4s var(--spring)}
+:is(.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card):nth-child(4n+2){--pop:var(--pop-2)}
+:is(.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card):nth-child(4n+3){--pop:var(--pop-3)}
+:is(.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card):nth-child(4n+4){--pop:var(--pop-4)}
+:is(.behavior-card,.feed-card,.challenge-tile,.place-card,.resident-card):hover,:is(.behavior-card,.feed-card,.challenge-tile):focus-within{transform:translate(-3px,-3px) rotate(-.4deg);box-shadow:10px 10px 0 var(--pop)!important}
+.behavior-art{border-bottom:var(--sticker)}
+
+/* Hero stage: dark spotlight with soft sunburst rays behind the robot */
+.featured-moment{border:var(--sticker);box-shadow:8px 8px 0 var(--pop-1);border-radius:20px}
+.featured-stage{isolation:isolate}
+.featured-stage:before{content:'';position:absolute;inset:-20%;z-index:-1;pointer-events:none;background:repeating-conic-gradient(from 0deg at 50% 62%,rgba(216,240,115,.09) 0 6deg,transparent 6deg 18deg);animation:sunburst 60s linear infinite;mask:radial-gradient(circle at 50% 62%,#000 10%,transparent 60%);-webkit-mask:radial-gradient(circle at 50% 62%,#000 10%,transparent 60%)}
+@keyframes sunburst{to{transform:rotate(360deg)}}
+microduck-view:not([data-renderer])::after{content:'Waking up the duck…';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:800 10px 'Space Grotesk';letter-spacing:.18em;text-transform:uppercase;color:#9fb8a6;animation:wake-pulse 1.4s ease-in-out infinite;white-space:nowrap}
+@keyframes wake-pulse{50%{opacity:.35}}
+
+/* Buttons: chunky, pressable */
+.button,.play-button{border:var(--sticker)!important;box-shadow:4px 4px 0 var(--ink-line);transition:transform .25s var(--spring),box-shadow .25s var(--spring)}
+.button:hover,.play-button:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink-line)}
+.button:active,.play-button:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink-line)}
+.filter-chip,.date-chip,.text-button{transition:transform .3s var(--spring)}
+.filter-chip:active,.date-chip:active,.text-button:active{transform:scale(.94)}
+
+/* Shell colour picker: square sticker swatches */
+.robot-shell-controls button{border-radius:5px;width:22px;height:22px;border:2px solid #0f1f1b;box-shadow:3px 3px 0 rgba(15,31,27,.65);transition:transform .3s var(--spring)}
+.robot-shell-controls button:hover{transform:translate(-1px,-1px) rotate(-6deg)}
+.robot-shell-controls button[aria-pressed="true"]{transform:translate(-2px,-2px) scale(1.1);box-shadow:3px 3px 0 var(--pop-1)}
+
+/* Launch ribbon: tilted, loud ticker */
+.launch-ribbon{transform:rotate(-1deg);background:var(--pop-1);border-block:var(--sticker);color:var(--ink-line);margin-block:4px}
+.launch-ribbon b{color:#c35d2a}
+
+/* Brand mark bobs like a duck on water */
+.brand-symbol{animation:duck-bob 3.6s var(--soft) infinite}
+.brand:hover .brand-symbol{animation:duck-wiggle .7s var(--spring)}
+@keyframes duck-bob{0%,100%{transform:rotate(-7deg) translateY(0)}50%{transform:rotate(-3deg) translateY(-3px)}}
+@keyframes duck-wiggle{0%{transform:rotate(-7deg)}30%{transform:rotate(9deg) scale(1.08)}60%{transform:rotate(-12deg)}100%{transform:rotate(-7deg)}}
+
+/* Navigation: citrus pill with a springy nudge */
+.nav-item{transition:background .25s var(--soft),color .25s,transform .35s var(--spring)}
+.nav-item:hover{transform:translateX(4px);color:#fff}
+.nav-item.active{background:var(--pop-1);color:var(--forest);border-color:var(--ink-line);box-shadow:3px 3px 0 rgba(0,0,0,.35)}
+.nav-item .nav-glyph{transition:transform .4s var(--spring)}
+.nav-item:hover .nav-glyph,.nav-item.active .nav-glyph{transform:scale(1.18) rotate(-8deg)}
+.mobile-nav button{transition:transform .35s var(--spring)}
+.mobile-nav button.active{transform:translateY(-3px)}
+
+.pulse-dot,.live-mark{animation:dot-breathe 2.2s ease-in-out infinite}
+@keyframes dot-breathe{50%{opacity:.45}}
+
+/* Respect calm preferences everywhere */
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+.motion-disabled *,.motion-disabled *:before,.motion-disabled *:after{animation:none!important;transition-duration:0s!important}
+
+/* Workshop: train → try → tune → share strip */
+.learn-strip{list-style:none;padding:0;margin:0 0 22px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.learn-strip li{--pop:var(--pop-1);background:var(--paper);border:var(--sticker);border-radius:14px;padding:14px 15px;box-shadow:5px 5px 0 var(--pop);display:grid;gap:3px;transition:transform .4s var(--spring)}
+.learn-strip li:nth-child(2){--pop:var(--pop-2)}.learn-strip li:nth-child(3){--pop:var(--pop-3)}.learn-strip li:nth-child(4){--pop:var(--pop-4)}
+.learn-strip li:hover{transform:translate(-2px,-2px) rotate(-.6deg)}
+.learn-strip b{font:900 26px/1 var(--display);color:#c35d2a}
+.learn-strip strong{font:700 14px 'Space Grotesk';color:var(--ink)}
+.learn-strip span{font-size:11.5px;color:var(--muted);line-height:1.45}
+@media(max-width:900px){.learn-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.learn-strip{grid-template-columns:1fr}}
+.nav-item.active .nav-key{color:#2c4a3d}
+.learn-strip span{color:#4f5f58}
+:is(.pond-heading,.page-head) h1 :is(span,em){text-shadow:3px 3px 0 var(--ink-line)}

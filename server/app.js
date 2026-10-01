@@ -24,7 +24,10 @@ const behaviorCatalog=[
   {id:'balance-back',name:'Balance back',origin:'illustrative',verification:'unverified'},
   {id:'hello-wave',name:'Hello, world',origin:'illustrative',verification:'unverified'},
   {id:'tiny-dance',name:'Tiny dance break',origin:'illustrative',verification:'unverified'},
-  {id:'duck-spot',name:'Spot a friend',origin:'illustrative',verification:'unverified'}
+  {id:'duck-spot',name:'Spot a friend',origin:'illustrative',verification:'unverified'},
+  {id:'sit-stand',name:'Sit & stand',origin:'illustrative',verification:'unverified'},
+  {id:'kick',name:'Little kick',origin:'illustrative',verification:'unverified'},
+  {id:'grab',name:'Beak grab',origin:'illustrative',verification:'unverified'}
 ];
 function readJson(req) {
   return new Promise((resolve,reject)=>{
