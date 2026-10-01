@@ -2,10 +2,6 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildCity } from './ducktown-city.js';
 import { sampleMotion, solveLeg, ANKLE_REST, sampleGait, stanceSpeed, GAIT, REAL_GAIT } from './robot-motion.js';
 
@@ -33,13 +29,15 @@ const MODES = {
 // Orbit camera: free 360° yaw; pitch from underneath to straight above, stopping short of the
 // poles so the view never flips. 0.177 rad matches the original eye-level framing.
 const FOLLOW = .65;
-const PITCH = {min:-1.35, max:1.42, rest:.177};
+// The hero sits further back and a little higher, so the duck reads as a small robot in a big city.
+const PITCH = {min:-1.35, max:1.42, rest:.06};
+const HERO_RADIUS = 96, CARD_RADIUS = 58.9, CARD_PITCH = .177;
 const VIEWS = [['Front',0,PITCH.rest,'Front'],['¾',.48,PITCH.rest,'Three-quarter'],['Side',1.4,PITCH.rest,'Side'],['Top',.48,1.35,'Top-down'],['Under',.48,-1.2,'Underneath']];
 const active = new Set();
 const templates = new Map();
 const geometryCache = new Map();
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-let renderer, softwareGL = false, environment, renderFailure = false, frame = 0, lastTick = 0;
+let renderer, environment, renderFailure = false, frame = 0, lastTick = 0;
 
 function material(color, roughness = .46, metalness = 0) {
   return new THREE.MeshStandardMaterial({color, roughness, metalness});
@@ -247,9 +245,6 @@ function initRenderer() {
     renderer.toneMappingExposure=.91;
     renderer.shadowMap.enabled=true;
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    // Software rasterisers (no usable GPU) get the light city without the glow pass.
-    const gl=renderer.getContext(),info=gl.getExtension('WEBGL_debug_renderer_info');
-    softwareGL=/swiftshader|llvmpipe|software|basic render/i.test(String(gl.getParameter(info?info.UNMASKED_RENDERER_WEBGL:gl.RENDERER)));
     const pmrem=new THREE.PMREMGenerator(renderer), room=new RoomEnvironment();
     const target=pmrem.fromScene(room,.04);
     environment=target.texture;
@@ -279,17 +274,18 @@ class MicroduckView extends HTMLElement {
     if(this.scene)return;
     this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;this.pitch=PITCH.rest;this.targetPitch=PITCH.rest;this.focus={x:0,z:0};
     this.isHero=!!this.closest('.featured-stage');
+    if(!this.isHero)this.pitch=this.targetPitch=CARD_PITCH;
     this.card=this.closest('.behavior-card');
     this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.life=0;this.gaze={yaw:0,pitch:0};this.targetGaze={yaw:0,pitch:0};this.chirpAt=2+Math.random()*4;this.mode='idle';this.battleBlend=0;this.walkBlend=0;this.gaitPhase=0;this.pathAngle=0;this.heading=0;this.faceBlend=0;this.gaitTotal=0;this.gaitParams=REAL_GAIT;this.gaitTurn=0;this.stompT=Infinity;this.shake=0;this.keyboardFocused=false;this.touchPressed=false;
     this.variant=this.dataset.variant||'cream';
     this.scene=new THREE.Scene();
     this.hemi=new THREE.HemisphereLight('#fff7e8','#526961',.85);this.scene.add(this.hemi);
-    const key=new THREE.DirectionalLight('#fff7ea',2.4);key.position.set(-15,30,22);
+    const key=new THREE.DirectionalLight('#fff7ea',2.4);this.keyLight=key;key.position.set(-15,30,22);
     key.castShadow=true;key.shadow.mapSize.set(this.isHero?1024:512,this.isHero?1024:512);
     Object.assign(key.shadow.camera,{left:-18,right:18,top:32,bottom:-10,near:1,far:90});
     key.shadow.normalBias=.06;key.shadow.bias=-.0001;this.scene.add(key);
-    const fill=new THREE.DirectionalLight('#d4ecff',.7);fill.position.set(18,16,-15);this.scene.add(fill);
-    const rim=new THREE.DirectionalLight('#f4e2bf',1.4);rim.position.set(6,24,-18);this.scene.add(rim);
+    const fill=new THREE.DirectionalLight('#d4ecff',.7);fill.position.set(18,16,-15);this.scene.add(fill);this.fillLight=fill;
+    const rim=new THREE.DirectionalLight('#f4e2bf',1.4);rim.position.set(6,24,-18);this.scene.add(rim);this.rimLight=rim;
     this.robot=buildRobot(this.variant);this.scene.add(this.robot);
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
     this.floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.ShadowMaterial({opacity:.1}));
@@ -378,7 +374,7 @@ class MicroduckView extends HTMLElement {
     this.controls?.remove();this.variantControls?.remove();this.modeControls?.remove();this.track?.geometry.dispose();this.track?.material.map.dispose();this.track?.material.dispose();this.status?.remove();
     // Shared robot geometry/materials are retained by the four template rigs.
     this.ball?.geometry.dispose();this.ball?.material.dispose();
-    this.floor?.geometry.dispose();this.floor?.material.dispose();this.city?.dispose();this.composer?.dispose();this.bloom?.dispose();
+    this.floor?.geometry.dispose();this.floor?.material.dispose();this.city?.dispose();
     this.scene?.traverse(object=>object.shadow?.dispose());
     this.canvas?.remove();this.scene=null;
     if(!active.size){cancelAnimationFrame(frame);frame=0;}
@@ -530,15 +526,20 @@ class MicroduckView extends HTMLElement {
     this.dataset.poseTime=t.toFixed(3);
   }
   ensureCity(){
-    // The hero duck stands in the middle of Ducktown at blue hour. Built once the renderer exists so
-    // glass towers can reflect the generated sky; phones get a lighter city without the glow pass.
+    // The hero duck stands in a real city (a 360° photo capture). Built once the renderer exists,
+    // because the photo's HDR light is prefiltered on the GPU for the duck's reflections.
     if(this.city || !this.isHero || !renderer)return;
-    // Touch devices (and very small screens) get the lighter city; a narrow desktop window is not a phone.
-    this.cityDetail=softwareGL||matchMedia('(pointer:coarse),(max-width:480px)').matches?.5:1;
-    this.city=buildCity({detail:this.cityDetail,renderer});
-    this.scene.add(this.city.group);this.scene.fog=this.city.fog;this.camera.far=700;
-    const {sky,ground,intensity}=this.city.hemisphere;
-    this.hemi.color.set(sky);this.hemi.groundColor.set(ground);this.hemi.intensity=intensity;
+    this.city=buildCity({renderer});
+    this.scene.add(this.city.group);this.camera.far=this.city.farPlane;
+    this.city.ready.then(ok=>{
+      if(!ok || !this.scene)return;
+      // Let the place light the duck: blue-hour sky fill from the photo, a softer warm key for the
+      // contact shadow (like the street lamp), a cool rim, and a firmer shadow on the paving.
+      this.hemi.intensity=.18;this.keyLight.color.set('#ffd2a1');this.keyLight.intensity=1.5;
+      this.fillLight.intensity=.25;this.rimLight.color.set('#bcd3ff');this.rimLight.intensity=1.1;
+      this.scene.environmentIntensity=1.05;this.floor.material.opacity=.38;
+      this.dirty=true;wake();
+    }).catch(error=>console.warn('Ducktown: city backdrop unavailable; keeping the studio stage.',error));
   }
   pathPoint(){
     // Ellipse through the origin: x sways across the stage, z heads away from the camera and back.
@@ -626,7 +627,7 @@ class MicroduckView extends HTMLElement {
     // stays in view from above or below while still visibly travelling around the stage.
     const [px,pz]=this.pathPoint().map(v=>v*FOLLOW),follow=motionEnabled()?1-Math.exp(-dt*4):1;
     this.focus.x+=(px-this.focus.x)*follow;this.focus.z+=(pz-this.focus.z)*follow;
-    const target=this.isHero?12.6:13,radius=58.9,flat=Math.cos(this.pitch)*radius,fx=this.focus.x,fz=this.focus.z+1.6;
+    const target=this.isHero?12.6:13,radius=this.isHero?HERO_RADIUS:CARD_RADIUS,flat=Math.cos(this.pitch)*radius,fx=this.focus.x,fz=this.focus.z+1.6;
     this.camera.position.set(fx+Math.sin(this.yaw)*flat+jitter,target+Math.sin(this.pitch)*radius+this.shake*Math.cos(this.life*70),fz+Math.cos(this.yaw)*flat);
     // Frame the taller, forward-leaning silhouette (head rides ahead of the hips).
     this.camera.lookAt(fx,target,fz);
@@ -642,23 +643,10 @@ class MicroduckView extends HTMLElement {
     // Fit the full robot even in narrow containers; cards keep a roomy studio crop.
     this.camera.fov=this.isHero?32:34;
     if(this.camera.aspect<.85)this.camera.fov=39;
-    this.camera.updateProjectionMatrix();this.scene.environment=environment;
+    this.camera.updateProjectionMatrix();this.scene.environment=this.city?.environment||environment;
     this.ensureCity();
-    const [dx,dz]=this.pathPoint();
-    this.city?.update(dt,this.camera,motionEnabled()&&this.isAlive(),{x:dx,z:dz});
-    renderer.setSize(w,h,false);
-    if(this.city && this.cityDetail===1){
-      // Glow pass: lit windows, street lamps and car lights bloom softly, like a camera at dusk.
-      if(!this.composer){
-        this.composer=new EffectComposer(renderer);
-        this.composer.addPass(new RenderPass(this.scene,this.camera));
-        // Threshold sits above the brightest lit robot shell, so only real light sources glow.
-        this.bloom=new UnrealBloomPass(new THREE.Vector2(w,h),.55,.4,1.35);
-        this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());
-      }
-      if(this.composerSize!==`${w}x${h}`){this.composer.setSize(w,h);this.composerSize=`${w}x${h}`;}
-      this.composer.render(dt);
-    }else renderer.render(this.scene,this.camera);
+    this.city?.update(this.camera);
+    renderer.setSize(w,h,false);renderer.render(this.scene,this.camera);
     this.context.clearRect(0,0,w,h);this.context.drawImage(renderer.domElement,0,0);
     this.dataset.renderer='webgl';this.updateStatus();this.dirty=false;
   }
