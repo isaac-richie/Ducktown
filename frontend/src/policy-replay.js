@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Replays of Pollen's official Microduck policies on Pollen's exact robot model.
 // Data comes from tools/policy-recorder (MuJoCo + Pollen's own inference code): every body's
@@ -7,6 +8,8 @@ import * as THREE from 'three';
 
 const ROBOT_JSON = new URL('./policy/robot.json', import.meta.url).href;
 const ROBOT_BIN = new URL('./policy/robot.bin', import.meta.url).href;
+const TREE_JSON = new URL('./policy/tree.json', import.meta.url).href;
+export const loadTree = () => fetch(TREE_JSON).then(r => r.json());
 const clipUrl = (name, ext) => new URL(`./policy/clips/${name}.${ext}`, import.meta.url).href;
 
 export const POLICY_CLIPS = [
@@ -15,7 +18,20 @@ export const POLICY_CLIPS = [
   {id: 'ground_pick', label: 'Pick', note: 'Beak to the floor and back up'},
   {id: 'stand', label: 'Stand', note: 'Balancing in place'}
 ];
-const BALL_RADIUS = .035; // metres, from microduck_rl/scripts/infer_policy.py
+const BALL_RADIUS = .035;
+
+// Product-photo finish per part category (see tools/policy-recorder/pack_robot.py). Shell, trim and
+// sole follow the chosen colourway like the four real Microducks; the mechanics stay dark.
+const FINISH = {
+  shell: {key: 'shell', roughness: .3, clearcoat: .6, clearcoatRoughness: .22},
+  trim: {key: 'trim', roughness: .38, clearcoat: .35, clearcoatRoughness: .3},
+  sole: {key: 'sole', roughness: .72},
+  mouth: {color: '#d9c7dd', roughness: .85},
+  face: {color: '#5a5f63', roughness: .42, metalness: .12, clearcoat: .2},
+  lens: {color: '#0a1016', roughness: .04, metalness: .3, clearcoat: 1, clearcoatRoughness: .02},
+  servo: {color: '#1c1e20', roughness: .55, metalness: .2},
+  frame: {color: '#2b2f33', roughness: .42, metalness: .4}
+}; // metres, from microduck_rl/scripts/infer_policy.py
 
 // MuJoCo is z-up with the robot facing +x; Ducktown is y-up, cm, robot facing +z.
 const MJ_TO_SCENE = new THREE.Matrix4().set(
@@ -35,7 +51,10 @@ export async function loadPolicyRobot() {
   root.matrixAutoUpdate = false;
   root.matrix.copy(MJ_TO_SCENE);
   const bodies = new Map(), materials = new Map();
-  const shellMaterials = [];
+  for (const [name, finish] of Object.entries(FINISH)) {
+    const {key, color, ...rest} = finish;
+    materials.set(name, new THREE.MeshPhysicalMaterial({color: color || '#ffffff', ...rest}));
+  }
   for (const part of meta.parts) {
     if (!bodies.has(part.body)) {
       const body = new THREE.Group(); body.name = part.body; bodies.set(part.body, body); root.add(body);
@@ -46,16 +65,10 @@ export async function loadPolicyRobot() {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-    geometry.computeVertexNormals();
-    const key = part.rgba.join(',');
-    if (!materials.has(key)) {
-      const color = new THREE.Color().setRGB(part.rgba[0], part.rgba[1], part.rgba[2], THREE.SRGBColorSpace);
-      const light = color.r + color.g + color.b > 2.1;
-      const material = new THREE.MeshStandardMaterial({color, roughness: light ? .38 : .55, metalness: light ? 0 : .15});
-      if (light) shellMaterials.push(material);
-      materials.set(key, material);
-    }
-    const mesh = new THREE.Mesh(geometry, materials.get(key));
+    // Weld, then smooth shading that keeps the CAD's sharp edges (creases above 35°).
+    const smooth = toCreasedNormals(mergeVertices(geometry, 1e-5), THREE.MathUtils.degToRad(35));
+    geometry.dispose();
+    const mesh = new THREE.Mesh(smooth, materials.get(part.category) || materials.get('frame'));
     mesh.castShadow = true; mesh.receiveShadow = true;
     bodies.get(part.body).add(mesh);
   }
@@ -64,8 +77,10 @@ export async function loadPolicyRobot() {
   bodies.set('ball', ball); root.add(ball);
   return {
     root, bodies,
-    // Shell colourways: tint the light shell parts, keep servos, trim and soles as built.
-    setShell(hex) { for (const m of shellMaterials) m.color.set(hex); },
+    // Colourways: shell, trim and sole like the real Cream / Graphite / Lavender / Sky ducks.
+    setColorway({shell, trim, sole}) {
+      materials.get('shell').color.set(shell); materials.get('trim').color.set(trim); materials.get('sole').color.set(sole);
+    },
     dispose() {
       root.traverse(o => o.geometry?.dispose());
       for (const m of materials.values()) m.dispose();

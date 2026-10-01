@@ -359,7 +359,9 @@ class MicroduckView extends HTMLElement {
       });
       this.addEventListener('pointerup',event=>{
         // A press without a drag is a tap: the duck stomps in battle mode, or hops hello on a walk.
-        if(this.mode!=='idle' && this.pressX!==undefined && Math.hypot(event.clientX-this.pressX,event.clientY-this.pressY)<6)this.stomp();
+        const tap=this.pressX!==undefined && Math.hypot(event.clientX-this.pressX,event.clientY-this.pressY)<6;
+        if(tap && this.mode==='idle')this.tapBall(event);
+        else if(tap && this.mode!=='idle')this.stomp();
         this.dragX=undefined;this.pressX=undefined;
       });
       this.addEventListener('pointercancel',()=>{this.dragX=undefined;});
@@ -444,7 +446,7 @@ class MicroduckView extends HTMLElement {
     this.robot=buildRobot(variant);this.scene.add(this.robot);
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
     for(const side of ['left','right'])for(const part of ['leg','shin','foot'])this.rig[`${part}-${side}`]=this.robot.getObjectByName(`${part}-${side}`);
-    this.variant=variant;this.dataset.variant=variant;this.policyRobot?.setShell(PALETTES[variant].shell);
+    this.variant=variant;this.dataset.variant=variant;this.policyRobot?.setColorway(PALETTES[variant]);
     this.setAttribute('aria-label',`Three-dimensional visual study of a ${variant} Microduck robot`);
     for(const button of this.variantControls.querySelectorAll('button')){
       button.setAttribute('aria-pressed',String(button.getAttribute('aria-label').toLowerCase().startsWith(variant)));
@@ -459,6 +461,7 @@ class MicroduckView extends HTMLElement {
       this.mode==='battle'?`BATTLE · JUST FOR FUN, NOT A REAL GAIT · ${tap} TO STOMP`:
       this.mode==='walk'?`REAL WALK · HAND-ANIMATED SHUFFLE · ${tap} TO SAY HI`:
       this.mode==='policy'?(this.clip?`SIMULATED · POLLEN'S OFFICIAL POLICY · ${this.clipNote.toUpperCase()} · ${tap} TO REPLAY`:'LOADING POLLEN\'S ROBOT…'):
+      this.exact?(touch?'TAP THE BALL TO KICK IT · SWIPE TO SPIN':'CLICK THE BALL TO KICK IT · DRAG TO ORBIT 360°'):
       (touch?'HOLD TO OPEN · SWIPE SIDEWAYS TO SPIN':'HOVER TO OPEN · DRAG TO ORBIT 360°');
     if(this.modeControls){
       this.modeControls.hidden=!webgl;
@@ -475,6 +478,7 @@ class MicroduckView extends HTMLElement {
   }
   setMode(mode){
     if(mode!=='idle' && !motionEnabled())return;
+    if(mode!=='policy')this.autoReturn=false;
     // Switching off away from home, the duck walks the rest of its lap back instead of sliding.
     this.returning=mode==='idle' && toHome(this.pathAngle)>.02 && motionEnabled();
     this.mode=mode;
@@ -483,8 +487,47 @@ class MicroduckView extends HTMLElement {
     this.closest('.featured-stage')?.classList.toggle('is-walk',mode==='walk'||mode==='policy');
     if(this.clipControls)this.clipControls.hidden=mode!=='policy';
     if(mode==='policy')this.playClip(this.clipName||'kick_right');
-    else if(this.policyRobot){this.policyRobot.root.visible=false;this.robot.visible=true;}
+    else if(this.policyRobot && !this.exact){this.policyRobot.root.visible=false;this.robot.visible=true;}
     this.updateStatus();this.dirty=true;wake();
+  }
+  async loadExactDuck(){
+    // Pollen's exact robot becomes the hero: driven through its 14 real joints by our motion system,
+    // or replaying recorded policies. The hand-built duck is only the placeholder while it loads.
+    try{
+      const [replay,{ExactDuck,quatFromEuler}]=await Promise.all([import('./policy-replay.js'),import('./exact-duck.js')]);
+      const [robot,tree]=await Promise.all([this.policyRobot||replay.loadPolicyRobot(),replay.loadTree()]);
+      if(!this.scene)return robot.dispose?.();
+      if(!this.policyRobot){
+        this.policyRobot=robot;
+        robot.root.matrix.premultiply(new THREE.Matrix4().makeTranslation(0,-.24,0));
+        robot.setColorway(PALETTES[this.variant]);this.scene.add(robot.root);
+      }
+      this.replay=replay;this.exact=new ExactDuck(tree);this.quatFromEuler=quatFromEuler;
+      this.policyRobot.root.visible=true;this.robot.visible=false;
+      this.updateStatus();this.dirty=true;wake();
+    }catch(error){console.warn('Ducktown: exact robot unavailable; keeping the illustrated duck.',error);}
+  }
+  poseExact(motion,crouch,sway,breathe){
+    // Ducktown motion -> Pollen's real joints. Scene is cm (y up, z forward); MuJoCo is m (z up, x forward).
+    const yaw=wrapAngle(this.heading)*this.faceBlend,[px,pz]=this.pathPoint(),cy=Math.cos(yaw),sy=Math.sin(yaw);
+    const ground={pos:[pz/100,px/100,0],yawQuat:this.quatFromEuler(0,0,yaw)};
+    // The real leg has no ankle roll, so the pelvis shift is kept small to keep soles flat (~3°).
+    const shift=motion.shift*.0032,drop=Math.max(-.01,(crouch-.85)*.008);
+    const trunk={
+      pos:[ground.pos[0]-sy*shift,ground.pos[1]+cy*shift,this.exact.standHeight-drop],
+      quat:this.quatFromEuler(sway*.006+motion.hipRoll+motion.roll*.4,motion.lean,yaw)
+    };
+    // Reach must match body travel 1:1 (cm -> m) or planted feet skid; only step height is scaled down.
+    // The illustrated duck's 'right' leg sits on scene +x, which is the real robot's LEFT side
+    // (MuJoCo +y). Map by side, not by name, so the stance foot and turn compensation line up.
+    const feet={left:{lift:motion.lift*.008,reach:motion.reach*.01},right:{lift:motion.liftL*.008,reach:motion.reachL*.01}};
+    const head={neck:motion.neck,pitch:motion.pitch-motion.lean*.6+this.gaze.pitch+breathe*.008,yaw:motion.yaw+this.gaze.yaw,roll:motion.roll-sway*.006};
+    const poses=this.exact.solve({trunk,ground,feet,head});
+    for(const [name,{pos,quat}] of poses){
+      const body=this.policyRobot.bodies.get(name);
+      if(body){body.position.set(pos[0],pos[1],pos[2]);body.quaternion.set(quat[1],quat[2],quat[3],quat[0]);}
+    }
+    this.policyRobot.bodies.get('ball').visible=false;
   }
   async playClip(name){
     // Load Pollen's exact robot once, then swap it in for the hand-built duck while replaying.
@@ -495,17 +538,28 @@ class MicroduckView extends HTMLElement {
       if(!this.policyRobot){
         this.policyRobot=await replay.loadPolicyRobot();
         this.policyRobot.root.matrix.premultiply(new THREE.Matrix4().makeTranslation(0,-.24,0));
-        this.policyRobot.setShell(PALETTES[this.variant].shell);
+        this.policyRobot.setColorway(PALETTES[this.variant]);
         this.scene?.add(this.policyRobot.root);
       }
       const clip=await replay.loadClip(name);
       if(this.clipName!==name || !this.scene)return;
       this.replay=replay;this.clip=clip;this.clipTime=0;
       this.clipNote=replay.POLICY_CLIPS.find(c=>c.id===name).note;
-      const on=this.mode==='policy';
+      const on=this.mode==='policy'||!!this.exact;
       this.policyRobot.root.visible=on;this.robot.visible=!on;
       this.updateStatus();this.dirty=true;wake();
     }catch(error){console.warn('Ducktown: policy replay unavailable.',error);}
+  }
+  tapBall(event){
+    // Tap the red ball: the duck kicks it with Pollen's real kick policy, then goes back to playing.
+    if(!this.ball?.visible || !this.exact || !motionEnabled())return;
+    const rect=this.canvas.getBoundingClientRect();
+    const ndc=new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
+    const ray=new THREE.Raycaster();ray.setFromCamera(ndc,this.camera);
+    // Generous hit area: the ball is small on screen.
+    const hit=ray.ray.distanceToPoint(this.ball.getWorldPosition(new THREE.Vector3()))<6;
+    if(!hit)return;
+    this.autoReturn=true;this.setMode('policy');this.playClip('kick_right');
   }
   stomp(){
     if(!motionEnabled())return;
@@ -574,7 +628,7 @@ class MicroduckView extends HTMLElement {
       this.ball.position.set(motion.ball,1.13,3);
       this.ball.rotation.z=-this.ball.position.x/1.35;
     }
-    // Feet remain planted. Gait/physics will come from the SDK, not decorative bobbing.
+    if(this.exact && this.mode!=='policy' && motion.tip<.001)this.poseExact(motion,crouch,sway,breathe);
     this.dataset.poseTime=t.toFixed(3);
   }
   ensureCity(){
@@ -582,6 +636,7 @@ class MicroduckView extends HTMLElement {
     // because the photo's HDR light is prefiltered on the GPU for the duck's reflections.
     if(this.city || !this.isHero || !renderer)return;
     this.city=buildCity({renderer});
+    this.loadExactDuck();
     this.scene.add(this.city.group);this.camera.far=this.city.farPlane;
     this.city.ready.then(ok=>{
       if(!ok || !this.scene)return;
@@ -676,7 +731,9 @@ class MicroduckView extends HTMLElement {
       const θ=this.pathAngle,dx=PATH.x*Math.cos(θ),dz=-PATH.z*Math.sin(θ),ddx=-PATH.x*Math.sin(θ),ddz=-PATH.z*Math.cos(θ);
       this.heading+=wrapAngle(Math.atan2(dx,dz)-this.heading);
       // Signed curvature (heading change per cm) × the feet's 3.65 cm offset from the centre line.
-      this.turn=Math.max(-.85,Math.min(.85,(dz*ddx-dx*ddz)/Math.hypot(dx,dz)**3*3.65));
+      // Use the feet's real distance from the centre line (Pollen's robot once loaded).
+      const footSpan=this.exact?Math.abs(this.exact.footOffset.left[1])*100:3.65;
+      this.turn=Math.max(-.85,Math.min(.85,(dz*ddx-dx*ddz)/Math.hypot(dx,dz)**3*footSpan));
     }
     this.gaitTurn=(this.turn||0)*(1-share);
     if(sum===0 && toHome(this.pathAngle)<.02)this.pathAngle=0;
@@ -712,7 +769,10 @@ class MicroduckView extends HTMLElement {
     if(replaying){
       // Real replay: advance the sim clock, hold the last frame a moment, then loop.
       if(motionEnabled())this.clipTime+=dt;
-      if(this.clipTime>this.clip.duration+1.2)this.clipTime=0;
+      if(this.clipTime>this.clip.duration+1.2){
+        if(this.autoReturn){this.autoReturn=false;this.setMode('idle');}
+        else this.clipTime=0;
+      }
       this.replay.applyClip(this.policyRobot,this.clip,Math.min(this.clipTime,this.clip.duration));
     }
     const [px,pz]=replaying?this.replay.clipTrunk(this.clip,Math.min(this.clipTime,this.clip.duration)).map(v=>v*FOLLOW):this.pathPoint().map(v=>v*FOLLOW),follow=motionEnabled()?1-Math.exp(-dt*4):1;

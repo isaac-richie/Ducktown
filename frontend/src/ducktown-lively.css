@@ -127,5 +127,5 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .robot-clip-controls button{border:0;border-radius:7px;padding:7px 11px;background:transparent;color:#e8efe0;font:800 9px 'Space Grotesk';letter-spacing:.08em;text-transform:uppercase}
 .robot-clip-controls button[aria-pressed="true"]{background:var(--pop-1);color:#173a33}
 @media(max-width:760px){.robot-clip-controls{bottom:150px}.robot-clip-controls button{min-height:40px}}
-@media(max-width:600px){.robot-clip-controls{right:16px;bottom:252px}}
+@media(max-width:600px){.robot-clip-controls{right:auto;left:16px;top:112px;bottom:auto}}
 @media(min-width:601px){.featured-stage .robot-render-label{margin-bottom:3px;padding-block:2px}}

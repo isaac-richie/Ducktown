@@ -137,6 +137,43 @@ def export_robot(ip, policies, out):
     print(f"robot: {len(parts)} visual parts, {tris} triangles, {len(blob) / 1e6:.1f} MB")
 
 
+def export_tree(ip, policies, out):
+    """Kinematic tree for driving the exact robot in the browser (forward kinematics), plus a
+    fixture of simulated frames (joint angles -> body world poses) to test the browser maths."""
+    import mujoco
+    model, data, bam_ctrl, policy = build_sim(ip, policies)
+    name = lambda kind, i: mujoco.mj_id2name(model, kind, i)
+    bodies = []
+    for b in range(1, model.nbody):
+        joint = None
+        if model.body_jntnum[b] == 1 and model.jnt_type[model.body_jntadr[b]] == mujoco.mjtJoint.mjJNT_HINGE:
+            j = model.body_jntadr[b]
+            joint = {"name": name(mujoco.mjtObj.mjOBJ_JOINT, j), "axis": model.jnt_axis[j].tolist(),
+                     "pos": model.jnt_pos[j].tolist(), "range": model.jnt_range[j].tolist(),
+                     "qposadr": int(model.jnt_qposadr[j])}
+        bodies.append({"name": name(mujoco.mjtObj.mjOBJ_BODY, b),
+                       "parent": name(mujoco.mjtObj.mjOBJ_BODY, model.body_parentid[b]) if model.body_parentid[b] else None,
+                       "pos": model.body_pos[b].tolist(), "quat": model.body_quat[b].tolist(), "joint": joint})
+    # Actuator order = policy action order (left leg, head, right leg).
+    joints = [name(mujoco.mjtObj.mjOBJ_JOINT, model.actuator_trnid[a][0]) for a in range(model.nu)]
+    fixture = []
+    for step in range(120):
+        policy.apply_action(policy.infer())
+        for _ in range(4):
+            bam_ctrl.update(); mujoco.mj_step(model, data)
+        if step % 40 == 39:
+            mujoco.mj_kinematics(model, data)  # xpos/xquat from this qpos, not the pre-integration step
+            fixture.append({"qpos": data.qpos.tolist(),
+                            "bodies": {bodies[i]["name"]: data.xpos[i + 1].tolist() + data.xquat[i + 1].tolist()
+                                       for i in range(len(bodies))}})
+    default = {n: float(policy.default_pose[i]) for i, n in enumerate(joints)}
+    tree = {"source": "pollen-robotics/microduck_rl (Apache-2.0)", "root": bodies[0]["name"],
+            "rootQposAdr": 0, "actuated": joints, "default": default, "bodies": bodies, "fixture": fixture}
+    with open(os.path.join(out, "tree.json"), "w") as fh:
+        json.dump(tree, fh)
+    print(f"tree: {len(bodies)} bodies, {sum(1 for b in bodies if b['joint'])} hinges, actuated={len(joints)}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rl", required=True)
@@ -148,6 +185,7 @@ def main():
     ip = load_infer_module(os.path.abspath(args.rl))
     os.makedirs(out, exist_ok=True)
     export_robot(ip, policies, out)
+    export_tree(ip, policies, out)
     if args.robot_only:
         return
 
