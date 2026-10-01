@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildCity } from './ducktown-city.js';
-import { sampleMotion, solveLeg, ANKLE_REST, sampleGait, stanceSpeed, GAIT, REAL_GAIT } from './robot-motion.js';
+import { sampleMotion, solveLeg3D, ANKLE_REST, sampleGait, stanceSpeed, GAIT, REAL_GAIT } from './robot-motion.js';
 
 // Original, photo-referenced presentation geometry; no Pollen CAD or meshes.
 // Units are visual centimetres, NOT calibrated SDK dimensions or joint frames.
@@ -33,6 +33,10 @@ const FOLLOW = .65;
 const PITCH = {min:-1.35, max:1.42, rest:.06};
 const HERO_RADIUS = 96, CARD_RADIUS = 58.9, CARD_PITCH = .177;
 const VIEWS = [['Front',0,PITCH.rest,'Front'],['¾',.48,PITCH.rest,'Three-quarter'],['Side',1.4,PITCH.rest,'Side'],['Top',.48,1.35,'Top-down'],['Under',.48,-1.2,'Underneath']];
+// Servo model: commands refresh at the real controller's 50 Hz and each channel follows like a
+// position-controlled motor (slightly underdamped: a tiny lag, overshoot and settle).
+const SERVO = {hz: 50, omega: 34, zeta: .62};
+const SERVO_CHANNELS = ['crouch','shift','lift','reach','liftL','reachL','lean','roll','pitch','yaw','neck','tip'];
 const active = new Set();
 const templates = new Map();
 const geometryCache = new Map();
@@ -199,7 +203,7 @@ function buildRobot(variant) {
   }
   // Two articulated legs. Side covers belong to thighs, never to arms/wings.
   for (const side of [-1,1]) {
-    const leg = new THREE.Group(); leg.name=side<0?'leg-left':'leg-right';
+    const leg = new THREE.Group(); leg.name=side<0?'leg-left':'leg-right'; leg.rotation.order='ZXY'; // roll, then pitch
     leg.position.set(side*3.65,10.8,-.25); robot.add(leg);
     box(leg,[1.8,2.2,1.9],[0,-.35,0],m.black,.16);
     link(leg,[0,-.2,0],[0,-3.7,-1.4],1.6,1.2,m.gray);
@@ -219,7 +223,7 @@ function buildRobot(variant) {
     cylinder(shin,.61,2.3,[0,-4.5,1.4],m.gray);
     screw(shin,side*1.2,-4.5,1.4,m);
     cable(shin,[[.7,-.4,-.3],[1,-1.8,.05],[.8,-3.4,.7]],m.black,.05);
-    const foot = new THREE.Group();foot.name=side<0?'foot-left':'foot-right';foot.position.set(0,-4.5,1.4);shin.add(foot);
+    const foot = new THREE.Group();foot.name=side<0?'foot-left':'foot-right';foot.rotation.order='XZY';foot.position.set(0,-4.5,1.4);shin.add(foot);
     // Chunky two-tone clog: thick rounded upper over a soft sole, with vent dots on the toe.
     box(foot,[3.4,.55,5.1],[0,-2.285,.9],m.sole,.26);
     box(foot,[3.3,1.05,4.9],[0,-1.53,.85],m.trim,.48);
@@ -491,28 +495,37 @@ class MicroduckView extends HTMLElement {
       const x=this.stompT/.7,hit=Math.sin(Math.PI*Math.min(1,x*1.4))*(this.stompScale??1);
       motion.crouch+=1.4*hit;motion.jaw=Math.max(motion.jaw,.34*hit);motion.pitch-=.18*hit;motion.lean+=.08*hit;
     }
+    this.updateGlance(l);
+    motion.yaw+=this.glance.yaw;motion.pitch+=this.glance.pitch;
+    this.servoFilter(motion);
     const breathe=Math.sin(l*1.9), sway=Math.sin(l*.73)*.6+Math.sin(l*1.31)*.4;
     // Expressive overlay is tiny so authored clips still read clearly; feet stay planted.
-    this.robot.rotation.z=sway*.012+motion.hipRoll;
+    this.robot.rotation.z=sway*.006+motion.hipRoll;
     // Ready stance: knees always a little bent, with a soft bounce, like the real ducks.
     const crouch=.85+(motionEnabled()?breathe*.12:0)+motion.crouch;
     // Tipping rotates about the feet; lift by the shell's half-depth so the back rests on the floor.
     // While lying, crouch tucks the legs toward the body instead of sinking it.
     this.robot.rotation.x=-motion.tip;
-    const path=this.pathPoint(),w=1;
+    const path=this.pathPoint(),yaw=wrapAngle(this.heading)*this.faceBlend;
     // Rocking over a foot sinks that foot's outer edge; lift by the same amount so it rests on the floor.
     const rock=Math.sin(Math.abs(motion.hipRoll))*5.35;
-    this.robot.position.set(path[0]*w,Math.sin(motion.tip)*3.4-crouch*Math.cos(motion.tip)+rock,path[1]*w);
+    // Pelvis shift: the body slides sideways over the stance foot (in its own frame) while the feet stay put.
+    const sx=Math.cos(yaw)*motion.shift,sz=-Math.sin(yaw)*motion.shift;
+    this.robot.position.set(path[0]+sx,Math.sin(motion.tip)*3.4-crouch*Math.cos(motion.tip)+rock,path[1]+sz);
     const torso=this.robot.getObjectByName('torso');
     if(torso){torso.userData.baseY??=torso.position.y;torso.position.y=torso.userData.baseY+breathe*.04;torso.rotation.set(motion.lean,0,motion.roll*.4);}
     for(const side of ['left','right']){
       const right=side==='right',lift=right?motion.lift:motion.liftL,reach=right?motion.reach:motion.reachL;
-      const leg=solveLeg(ANKLE_REST+crouch+lift,reach);
-      this.rig[`leg-${side}`].rotation.x=leg.hip;
+      // Hip roll + pitch solve: the ankle stays on its spot as the pelvis shifts, sole kept flat.
+      const leg=solveLeg3D(-motion.shift,ANKLE_REST+crouch+lift,reach);
+      this.rig[`leg-${side}`].rotation.set(leg.hip,0,leg.roll);
       this.rig[`shin-${side}`].rotation.x=leg.knee;
-      this.rig[`foot-${side}`].rotation.x=leg.foot-reach*.05;
+      // Toe flick only while the foot is in the air (kicks); a planted sole stays flat on the ground.
+      this.rig[`foot-${side}`].rotation.set(leg.foot-reach*.05*Math.min(1,lift),0,leg.footRoll);
     }
-    this.head.rotation.set(HEAD_LEVEL+motion.pitch-motion.lean*.6+this.gaze.pitch+breathe*.012,motion.yaw+this.gaze.yaw+Math.sin(l*.41)*.035,motion.roll+sway*.02-motion.hipRoll);
+    // Head stabilisation: like a bird, the head holds level against the body's lean and roll;
+    // it moves in quick glances that hold, rather than drifting.
+    this.head.rotation.set(HEAD_LEVEL+motion.pitch-motion.lean*.6+this.gaze.pitch+breathe*.008,motion.yaw+this.gaze.yaw,motion.roll-sway*.006-motion.hipRoll);
     this.neck.rotation.x=NECK_LEAN+motion.neck;
     if(motion.tip>.001)this.restOnFloor();
     else if(this.groundLevel===undefined && !motion.lift && !motion.liftL)this.groundLevel=this.lowestPoint();
@@ -540,6 +553,36 @@ class MicroduckView extends HTMLElement {
       this.scene.environmentIntensity=1.05;this.floor.material.opacity=.38;
       this.dirty=true;wake();
     }).catch(error=>console.warn('Ducktown: city backdrop unavailable; keeping the studio stage.',error));
+  }
+  servoFilter(motion){
+    // Sample-and-hold the commands at 50 Hz, then integrate each channel as a damped spring.
+    const dt=Math.min(this.frameDt||0,.1);
+    if(!this.servo || !motionEnabled()){
+      this.servo=Object.fromEntries(SERVO_CHANNELS.map(key=>[key,{pos:motion[key],vel:0,cmd:motion[key]}]));
+      this.servoClock=0;return;
+    }
+    this.servoClock+=dt;
+    const latch=this.servoClock>=1/SERVO.hz;
+    if(latch)this.servoClock%=1/SERVO.hz;
+    const {omega,zeta}=SERVO,steps=Math.max(1,Math.ceil(dt/.004)),h=dt/steps;
+    for(const key of SERVO_CHANNELS){
+      const s=this.servo[key];
+      if(latch)s.cmd=motion[key];
+      for(let i=0;i<steps;i++){s.vel+=(omega*omega*(s.cmd-s.pos)-2*zeta*omega*s.vel)*h;s.pos+=s.vel*h;}
+      motion[key]=s.pos;
+    }
+    // Feet can't push into the floor: a lifted foot settles to the ground, never below it.
+    motion.lift=Math.max(0,motion.lift);motion.liftL=Math.max(0,motion.liftL);
+  }
+  updateGlance(l){
+    // Every couple of seconds the duck glances somewhere new and holds it; the servo makes the move quick.
+    this.glance??={yaw:0,pitch:0,next:1.5};
+    if(!motionEnabled()){this.glance.yaw=this.glance.pitch=0;return;}
+    if(l>=this.glance.next){
+      const walking=this.gaitTotal>.5;
+      this.glance.yaw=(Math.random()-.5)*(walking?.3:.5);this.glance.pitch=(Math.random()-.5)*.14;
+      this.glance.next=l+1.2+Math.random()*2.6;
+    }
   }
   pathPoint(){
     // Ellipse through the origin: x sways across the stage, z heads away from the camera and back.
@@ -621,6 +664,7 @@ class MicroduckView extends HTMLElement {
     if(motionEnabled())this.jawAngle+=(this.targetJawAngle-this.jawAngle)*(1-Math.exp(-dt*14));
     else this.jawAngle=this.targetJawAngle;
     if(Math.abs(this.targetJawAngle-this.jawAngle)<.001)this.jawAngle=this.targetJawAngle;
+    this.frameDt=dt;
     this.pose();
     const jitter=this.shake*Math.sin(this.life*90);
     // Spherical orbit around the duck; the focus glides most of the way after it on its loop, so it

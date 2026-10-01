@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sampleMotion, solveLeg, ANKLE_REST, sampleGait, REAL_GAIT, GAIT } from './robot-motion.js';
+import { sampleMotion, solveLeg, solveLeg3D, ANKLE_REST, sampleGait, REAL_GAIT, GAIT } from './robot-motion.js';
 
 test('authored gestures stay bounded and close their loops without a jump',()=>{
   for(const [name,duration] of Object.entries({idle:8,'polite-bow':7,'hello-wave':6,'duck-spot':7,'balance-back':6,'tiny-dance':5,'ball-follow':8})){
@@ -76,4 +76,22 @@ test('turning lengthens the outer stride and shortens the inner one',()=>{
   const straight=sampleGait(0,REAL_GAIT),turning=sampleGait(0,REAL_GAIT,.4);
   assert.ok(Math.abs(turning.reach-straight.reach*.6)<1e-9);
   assert.ok(Math.abs(sampleGait(.5,REAL_GAIT,.4).reachL-sampleGait(.5,REAL_GAIT).reachL*1.4)<1e-9);
+});
+
+test('3D leg solve puts the ankle exactly on target with a flat foot',()=>{
+  const rx=(v,a)=>[v[0],v[1]*Math.cos(a)-v[2]*Math.sin(a),v[1]*Math.sin(a)+v[2]*Math.cos(a)];
+  const rz=(v,a)=>[v[0]*Math.cos(a)-v[1]*Math.sin(a),v[0]*Math.sin(a)+v[1]*Math.cos(a),v[2]];
+  for(const [dx,dy,dz] of [[0,ANKLE_REST+1,0],[1.2,ANKLE_REST+.9,.4],[-1.1,ANKLE_REST+2,-.6]]){
+    const s=solveLeg3D(dx,dy,dz);
+    // leg = Rz(roll)·Rx(hip) · [thigh + Rx(knee)·shin]
+    const shin=rx([0,-4.5,1.4],s.knee),chain=rx([0,-3.65+shin[1],-1.4+shin[2]],s.hip),ankle=rz(chain,s.roll);
+    assert.ok(Math.abs(ankle[0]-dx)<1e-6 && Math.abs(ankle[1]-dy)<1e-6 && Math.abs(ankle[2]-dz)<1e-6,'ankle misses target');
+    assert.ok(Math.abs(s.hip+s.knee+s.foot)<1e-9 && Math.abs(s.roll+s.footRoll)<1e-9,'foot not level');
+  }
+});
+
+test('walking shifts the pelvis over the stance foot',()=>{
+  // Right foot swinging (second half of the cycle): weight moves to the left (-x).
+  assert.ok(sampleGait(.75,REAL_GAIT).shift<-1 && sampleGait(.75,REAL_GAIT).lift>0);
+  assert.ok(sampleGait(.25,REAL_GAIT).shift>1 && sampleGait(.25,REAL_GAIT).liftL>0);
 });

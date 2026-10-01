@@ -3,7 +3,8 @@
 // crouch/lift/reach are centimetres of presentation travel (lift/reach = right foot, liftL/reachL = left);
 // lean and tip (whole-body fall onto the back) are radians; jaw opens 0-.34.
 // hipRoll rocks the whole body over the stance foot (radians) while the head counter-rotates to stay level.
-const rest={pitch:0,yaw:0,roll:0,neck:0,ball:0,crouch:0,lean:0,lift:0,reach:0,liftL:0,reachL:0,tip:0,jaw:0,hipRoll:0};
+// shift slides the pelvis sideways (cm) over the stance foot, the way real bipeds balance before a step.
+const rest={pitch:0,yaw:0,roll:0,neck:0,ball:0,crouch:0,lean:0,lift:0,reach:0,liftL:0,reachL:0,tip:0,jaw:0,hipRoll:0,shift:0};
 const clips={
   idle:[[0,{}],[1.8,{}],[2.6,{yaw:.15}],[3.6,{yaw:.15}],[4.6,{}],[8,{}]],
   'polite-bow':[[0,{}],[.7,{pitch:-.06}],[1.5,{pitch:.32,neck:.12}],[2.5,{pitch:.32,neck:.12}],[3.5,{pitch:-.025}],[4.2,{}],[7,{}]],
@@ -51,17 +52,27 @@ function footCycle(q,stride,height){
   return {reach:-stride+2*stride*smooth(s),lift:height*Math.sin(Math.PI*s)};
 }
 // Battle: a stylised mech run (long strides, high knees, deep crouch). Not a real Microduck gait.
-export const GAIT={stride:2.2,height:1.7,crouch:1.9,lean:.2,cadence:1.55,roll:.07,yaw:.09,bob:.35,nod:.04,hipRoll:0};
+export const GAIT={stride:2.2,height:1.7,crouch:1.9,lean:.2,cadence:1.55,roll:.07,yaw:.09,bob:.35,nod:.04,hipRoll:0,shift:.7};
 // Real walk: closer to the trained Microduck walk as filmed: short quick shuffle steps, feet barely
 // lifting, an upright body rocking over each stance foot, and a steady head. Still hand-authored.
-export const REAL_GAIT={stride:.9,height:.5,crouch:.15,lean:.04,cadence:2.2,roll:0,yaw:0,bob:.12,nod:0,hipRoll:.055};
+export const REAL_GAIT={stride:.9,height:.5,crouch:.15,lean:.04,cadence:2.2,roll:0,yaw:0,bob:.12,nod:0,hipRoll:0,shift:1.1};
 // turn = signed curvature × half hip width: on a curve the outer foot needs a longer stride and the
 // inner foot a shorter one, or the planted foot skids as the body rotates over it.
-export function sampleGait(phase,{stride,height,crouch,lean,roll,yaw,bob,nod,hipRoll}=GAIT,turn=0){
+export function sampleGait(phase,{stride,height,crouch,lean,roll,yaw,bob,nod,hipRoll,shift=0}=GAIT,turn=0){
   const p=((phase%1)+1)%1,w=Math.PI*2*p;
   const right=footCycle(p,stride*(1-turn),height),left=footCycle((p+.5)%1,stride*(1+turn),height);
   return {...rest,crouch:crouch+bob*Math.abs(Math.sin(w)),lean,roll:roll*Math.sin(w),yaw:yaw*Math.sin(w),
-    pitch:nod*Math.abs(Math.cos(w)),hipRoll:-hipRoll*Math.sin(w),lift:right.lift,reach:right.reach,liftL:left.lift,reachL:left.reach};
+    pitch:nod*Math.abs(Math.cos(w)),hipRoll:-hipRoll*Math.sin(w),shift:shift*Math.sin(w),lift:right.lift,reach:right.reach,liftL:left.lift,reachL:left.reach};
 }
 // cm/s the stance foot travels backward; the floor scrolls at this speed.
 export const stanceSpeed=({stride,cadence}=GAIT)=>4*stride*cadence;
+
+// Full leg solve with hip roll (the real legs have hip- and ankle-roll motors): target is the ankle
+// relative to the hip as (dx sideways, dy down, dz forward). Roll tilts the leg plane, the 2-link
+// solve bends hip/knee inside it, and the foot counter-rotates in both axes so the sole stays flat.
+// Apply leg rotation in 'ZXY' order and foot rotation in 'XZY' order.
+export function solveLeg3D(dx,dy,dz){
+  const roll=Math.atan2(dx,-dy),inPlane=-Math.hypot(dx,dy);
+  const {hip,knee,foot}=solveLeg(inPlane,dz);
+  return {roll,hip,knee,foot,footRoll:-roll};
+}
