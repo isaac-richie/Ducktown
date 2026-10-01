@@ -17,7 +17,7 @@
 
 /* Hero stage: dark spotlight with soft sunburst rays behind the robot */
 .featured-moment{border:var(--sticker);box-shadow:8px 8px 0 var(--pop-1);border-radius:20px}
-.featured-stage{isolation:isolate}
+.featured-stage{isolation:isolate;overflow:clip}
 .featured-stage:before{content:'';position:absolute;inset:-20%;z-index:-1;pointer-events:none;background:repeating-conic-gradient(from 0deg at 50% 62%,rgba(216,240,115,.09) 0 6deg,transparent 6deg 18deg);animation:sunburst 60s linear infinite;mask:radial-gradient(circle at 50% 62%,#000 10%,transparent 60%);-webkit-mask:radial-gradient(circle at 50% 62%,#000 10%,transparent 60%)}
 @keyframes sunburst{to{transform:rotate(360deg)}}
 microduck-view:not([data-renderer])::after{content:'Waking up the duck…';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:800 10px 'Space Grotesk';letter-spacing:.18em;text-transform:uppercase;color:#9fb8a6;animation:wake-pulse 1.4s ease-in-out infinite;white-space:nowrap}
@@ -74,3 +74,15 @@ microduck-view:not([data-renderer])::after{content:'Waking up the duck…';posit
 .nav-item.active .nav-key{color:#2c4a3d}
 .learn-strip span{color:#4f5f58}
 :is(.pond-heading,.page-head) h1 :is(span,em){text-shadow:3px 3px 0 var(--ink-line)}
+
+/* Battle mode: toggle on the hero stage, and a hotter stage while it runs */
+.robot-battle-toggle{position:absolute;z-index:4;right:26px;bottom:111px;display:flex;align-items:center;gap:5px;padding:6px 10px;border:2px solid #0f1f1b;border-radius:8px;background:#e1edcf;color:#173a33;font:800 9px 'Space Grotesk';letter-spacing:.08em;text-transform:uppercase;box-shadow:3px 3px 0 rgba(15,31,27,.6);transition:transform .25s var(--spring),background .2s,box-shadow .25s var(--spring)}
+.robot-battle-toggle:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(15,31,27,.6)}
+.robot-battle-toggle:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(15,31,27,.6)}
+.robot-battle-toggle[aria-pressed="true"]{background:var(--pop-2);color:#1c120b}
+.robot-battle-toggle:disabled{opacity:.5;cursor:not-allowed}
+.robot-battle-toggle[hidden]{display:none}
+.featured-stage.is-battle:before{background:repeating-conic-gradient(from 0deg at 50% 62%,rgba(255,153,104,.16) 0 6deg,transparent 6deg 18deg);animation-duration:8s}
+
+@media(max-width:760px){.robot-battle-toggle{bottom:100px;min-height:38px}}
+@media(max-width:600px){.robot-battle-toggle{right:16px;bottom:91px}}

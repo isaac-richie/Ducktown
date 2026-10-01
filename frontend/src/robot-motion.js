@@ -39,3 +39,22 @@ export function solveLeg(y,z){
   return {hip,knee:wrap(total-hip),foot:-total};
 }
 export const ANKLE_REST=thigh[0]+shin[0];
+
+// Procedural mech-style run: each foot slides back flat on the ground (stance), then lifts and swings
+// forward (swing), half a cycle apart. Feet move at a constant speed during stance so a floor scrolling
+// at stanceSpeed() keeps them visually planted.
+const smooth=x=>x*x*(3-2*x);
+function footCycle(q,stride,height){
+  if(q<.5)return {reach:stride*(1-4*q),lift:0};
+  const s=(q-.5)/.5;
+  return {reach:-stride+2*stride*smooth(s),lift:height*Math.sin(Math.PI*s)};
+}
+export const GAIT={stride:2.2,height:1.7,crouch:1.9,lean:.2,cadence:1.55};
+export function sampleGait(phase,{stride,height,crouch,lean}=GAIT){
+  const p=((phase%1)+1)%1,w=Math.PI*2*p;
+  const right=footCycle(p,stride,height),left=footCycle((p+.5)%1,stride,height);
+  return {...rest,crouch:crouch+.35*Math.abs(Math.sin(w)),lean,roll:.07*Math.sin(w),yaw:.09*Math.sin(w),
+    pitch:.04*Math.abs(Math.cos(w)),lift:right.lift,reach:right.reach,liftL:left.lift,reachL:left.reach};
+}
+// cm/s the stance foot travels backward; the floor scrolls at this speed.
+export const stanceSpeed=({stride,cadence}=GAIT)=>4*stride*cadence;

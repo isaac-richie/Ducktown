@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { sampleMotion, solveLeg, ANKLE_REST } from './robot-motion.js';
+import { sampleMotion, solveLeg, ANKLE_REST, sampleGait, stanceSpeed, GAIT } from './robot-motion.js';
 
 // Original, photo-referenced presentation geometry; no Pollen CAD or meshes.
 // Units are visual centimetres, NOT calibrated SDK dimensions or joint frames.
@@ -249,7 +249,7 @@ class MicroduckView extends HTMLElement {
     this.visible=false;this.dirty=true;this.time=0;this.yaw=.48;this.targetYaw=.48;
     this.isHero=!!this.closest('.featured-stage');
     this.card=this.closest('.behavior-card');
-    this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.life=0;this.gaze={yaw:0,pitch:0};this.targetGaze={yaw:0,pitch:0};this.chirpAt=2+Math.random()*4;this.keyboardFocused=false;this.touchPressed=false;
+    this.jawAngle=0;this.targetJawAngle=0;this.pointerOver=false;this.life=0;this.gaze={yaw:0,pitch:0};this.targetGaze={yaw:0,pitch:0};this.chirpAt=2+Math.random()*4;this.battle=false;this.battleBlend=0;this.gaitPhase=0;this.stompT=Infinity;this.shake=0;this.keyboardFocused=false;this.touchPressed=false;
     this.variant=this.dataset.variant||'cream';
     this.scene=new THREE.Scene();
     this.scene.add(new THREE.HemisphereLight('#fff7e8','#526961',.85));
@@ -301,10 +301,19 @@ class MicroduckView extends HTMLElement {
       this.title='Hover or focus to open the mouth. Drag to rotate. On touch screens, press and hold.';
       this.ball=new THREE.Mesh(new THREE.SphereGeometry(1.35,24,16),material('#d96248',.55));
       this.ball.castShadow=true;this.scene.add(this.ball);
+      // Battle mode floor: painted stripes that scroll at foot speed so planted feet read as running.
+      const stripes=document.createElement('canvas');stripes.width=stripes.height=64;
+      const sc=stripes.getContext('2d');sc.fillStyle='rgba(216,240,115,.55)';sc.fillRect(0,0,64,7);sc.fillStyle='rgba(216,240,115,.18)';sc.fillRect(0,32,64,3);
+      const texture=new THREE.CanvasTexture(stripes);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(1,70/16);
+      this.track=new THREE.Mesh(new THREE.PlaneGeometry(16,70),new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:0,depthWrite:false}));
+      this.track.rotation.x=-Math.PI/2;this.track.position.y=-.2;this.scene.add(this.track);
+      this.addEventListener('keydown',event=>{
+        if(this.battle && (event.key==='Enter'||event.key===' ')){event.preventDefault();this.stomp();}
+      });
       this.makeControls();
       this.addEventListener('pointerdown',event=>{
         if(event.button!==0)return;
-        this.dragX=event.clientX;this.dragYaw=this.targetYaw;
+        this.dragX=event.clientX;this.dragYaw=this.targetYaw;this.pressX=event.clientX;this.pressY=event.clientY;
         this.setPointerCapture(event.pointerId);
       });
       this.addEventListener('pointermove',event=>{
@@ -313,7 +322,11 @@ class MicroduckView extends HTMLElement {
         this.dirty=true;wake();
         for(const button of this.controls.children)button.setAttribute('aria-pressed','false');
       });
-      this.addEventListener('pointerup',()=>{this.dragX=undefined;});
+      this.addEventListener('pointerup',event=>{
+        // A press without a drag is a tap: in battle mode, the duck stomps.
+        if(this.battle && this.pressX!==undefined && Math.hypot(event.clientX-this.pressX,event.clientY-this.pressY)<6)this.stomp();
+        this.dragX=undefined;this.pressX=undefined;
+      });
       this.addEventListener('pointercancel',()=>{this.dragX=undefined;});
     }
     active.add(this);visibility.observe(this);resize.observe(this);wake();
@@ -321,7 +334,7 @@ class MicroduckView extends HTMLElement {
   disconnectedCallback() {
     active.delete(this);visibility.unobserve(this);if(this.onGaze)window.removeEventListener('pointermove',this.onGaze);resize.unobserve(this);
     if(this.card)for(const event of ['pointerenter','pointerleave','focusin','focusout'])this.card.removeEventListener(event,this.cardWake);
-    this.controls?.remove();this.variantControls?.remove();this.status?.remove();
+    this.controls?.remove();this.variantControls?.remove();this.battleToggle?.remove();this.track?.geometry.dispose();this.track?.material.map.dispose();this.track?.material.dispose();this.status?.remove();
     // Shared robot geometry/materials are retained by the four template rigs.
     this.ball?.geometry.dispose();this.ball?.material.dispose();
     this.floor?.geometry.dispose();this.floor?.material.dispose();
@@ -343,6 +356,10 @@ class MicroduckView extends HTMLElement {
       });group.append(button);
     }
     this.controls=group;this.parentElement.append(group);
+    const battle=document.createElement('button');battle.type='button';battle.className='robot-battle-toggle';
+    battle.innerHTML='<span aria-hidden="true">⚡</span> Battle mode';battle.setAttribute('aria-pressed','false');
+    battle.addEventListener('click',()=>this.setBattle(!this.battle));
+    this.battleToggle=battle;this.parentElement.append(battle);
     const shellControls=document.createElement('div');
     shellControls.className='robot-shell-controls';
     shellControls.setAttribute('role','group');
@@ -376,10 +393,22 @@ class MicroduckView extends HTMLElement {
   }
   updateStatus(){
     const webgl=this.dataset.renderer==='webgl';
-    const label=webgl?(matchMedia('(pointer:coarse)').matches?'HOLD TO OPEN · DRAG TO ROTATE':'HOVER TO OPEN · DRAG TO ROTATE'):'ROBOT ILLUSTRATION';
+    const touch=matchMedia('(pointer:coarse)').matches;
+    const label=!webgl?'ROBOT ILLUSTRATION':this.battle?(touch?'TAP TO STOMP · DRAG TO ROTATE':'CLICK TO STOMP · DRAG TO ROTATE'):(touch?'HOLD TO OPEN · DRAG TO ROTATE':'HOVER TO OPEN · DRAG TO ROTATE');
+    if(this.battleToggle){this.battleToggle.hidden=!webgl;this.battleToggle.disabled=!motionEnabled();}
     if(this.status && this.status.textContent!==label)this.status.textContent=label;
     if(this.controls && this.controls.hidden===webgl)this.controls.hidden=!webgl;
     if(this.variantControls && this.variantControls.hidden===webgl)this.variantControls.hidden=!webgl;
+  }
+  setBattle(on){
+    if(on && !motionEnabled())return;
+    this.battle=on;this.battleToggle?.setAttribute('aria-pressed',String(on));
+    this.closest('.featured-stage')?.classList.toggle('is-battle',on);
+    this.updateStatus();this.dirty=true;wake();
+  }
+  stomp(){
+    if(!motionEnabled())return;
+    this.stompT=0;this.dirty=true;wake();
   }
   isPlaying(){
     return motionEnabled() && this.stage?.classList.contains('is-playing') && !this.stage.classList.contains('is-paused') &&
@@ -388,10 +417,19 @@ class MicroduckView extends HTMLElement {
   }
   isAlive(){
     // Ambient life (breathing, weight shift, gaze) keeps the hero feeling present; cards wake on hover.
-    return motionEnabled() && this.visible && (this.isHero || this.isPlaying()) && !this.stage?.classList.contains('is-paused');
+    return motionEnabled() && this.visible && (this.isHero || this.isPlaying() || this.battleBlend>0) && !this.stage?.classList.contains('is-paused');
   }
   pose(){
-    const t=this.time, motion=sampleMotion(this.behavior,t), l=this.life;
+    const t=this.time, l=this.life, motion=sampleMotion(this.behavior,t);
+    if(this.battleBlend>0){
+      const gait=sampleGait(this.gaitPhase),k=this.battleBlend;
+      for(const key in motion)motion[key]+=(gait[key]-motion[key])*k;
+    }
+    if(this.stompT<.7){
+      // Stomp: quick wind-up, heavy drop, roar, recover.
+      const x=this.stompT/.7,hit=Math.sin(Math.PI*Math.min(1,x*1.4));
+      motion.crouch+=1.4*hit;motion.jaw=Math.max(motion.jaw,.34*hit);motion.pitch-=.18*hit;motion.lean+=.08*hit;
+    }
     const breathe=Math.sin(l*1.9), sway=Math.sin(l*.73)*.6+Math.sin(l*1.31)*.4;
     // Expressive overlay is tiny so authored clips still read clearly; feet stay planted.
     this.robot.rotation.z=sway*.012;
@@ -450,7 +488,24 @@ class MicroduckView extends HTMLElement {
       this.chirp=since>0&&since<.5?Math.sin(since/.5*Math.PI*2)**2*.22:0;
       if(since>=.5)this.chirpAt=this.life+3+Math.random()*5;
     }else this.chirp=0;
-    const g=motionEnabled()?1-Math.exp(-dt*5):1;
+    if(!motionEnabled() && this.battle)this.setBattle(false);
+    const target=this.battle?1:0,ramp=motionEnabled()?1-Math.exp(-dt*3):1;
+    this.battleBlend+=(target-this.battleBlend)*ramp;
+    if(Math.abs(target-this.battleBlend)<.002)this.battleBlend=target;
+    const speedUp=this.battleBlend;
+    this.gaitPhase=(this.gaitPhase+dt*GAIT.cadence*speedUp)%1;
+    if(this.stompT<.7)this.stompT+=dt;
+    if(this.track){
+      this.track.material.opacity=.9*this.battleBlend;
+      // The plane's v axis points backward (world -z); lowering the offset carries stripes backward with the planted foot.
+      this.track.material.map.offset.y=(this.track.material.map.offset.y-dt*speedUp*stanceSpeed()/16+1)%1;
+    }
+    if(this.ball)this.ball.visible=this.battleBlend<.5;
+    // Footfall impact: a small camera kick each time a foot plants, plus a big one for a stomp.
+    const footfall=Math.max(0,Math.cos(this.gaitPhase*Math.PI*4))**12*this.battleBlend;
+    const stompKick=this.stompT<.7?Math.max(0,Math.sin(Math.PI*Math.min(1,this.stompT/.7*1.4)))**6:0;
+    this.shake=motionEnabled()?footfall*.18+stompKick*.6:0;
+    const g=motionEnabled()?1-Math.exp(-dt*(this.battle?9:5)):1;
     this.gaze.yaw+=(this.targetGaze.yaw-this.gaze.yaw)*g;this.gaze.pitch+=(this.targetGaze.pitch-this.gaze.pitch)*g;
     if(motionEnabled())this.yaw+=(this.targetYaw-this.yaw)*Math.min(1,dt*10);
     else this.yaw=this.targetYaw;
@@ -458,7 +513,8 @@ class MicroduckView extends HTMLElement {
     else this.jawAngle=this.targetJawAngle;
     if(Math.abs(this.targetJawAngle-this.jawAngle)<.001)this.jawAngle=this.targetJawAngle;
     this.pose();
-    this.camera.position.set(Math.sin(this.yaw)*52,22,Math.cos(this.yaw)*52);
+    const jitter=this.shake*Math.sin(this.life*90);
+    this.camera.position.set(Math.sin(this.yaw)*52+jitter,22+this.shake*Math.cos(this.life*70),Math.cos(this.yaw)*52);
     this.camera.lookAt(0,this.isHero?10.6:11.2,0);
     const bounds=this.getBoundingClientRect();
     if(bounds.width<1 || bounds.height<1)return;
@@ -490,7 +546,7 @@ function tick(now){
     const changingAngle=Math.abs(item.targetYaw-item.yaw)>.001;
     const changingJaw=Math.abs(item.targetJawAngle-item.jawAngle)>.001;
     const changingGaze=Math.abs(item.targetGaze.yaw-item.gaze.yaw)+Math.abs(item.targetGaze.pitch-item.gaze.pitch)>.001;
-    const moving=item.isPlaying() || item.isAlive() || changingAngle || changingJaw || changingGaze;
+    const moving=item.isPlaying() || item.isAlive() || item.stompT<.7 || (item.battleBlend>0 && item.battleBlend<1) || changingAngle || changingJaw || changingGaze;
     if(item.dirty || moving){
       try{item.draw(dt);}catch(error){item.dataset.renderer='fallback';item.updateStatus();console.warn('Ducktown model render failed',error);}
     }

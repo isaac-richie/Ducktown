@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sampleMotion, solveLeg, ANKLE_REST } from './robot-motion.js';
+import { sampleMotion, solveLeg, ANKLE_REST, sampleGait } from './robot-motion.js';
 
 test('authored gestures stay bounded and close their loops without a jump',()=>{
   for(const [name,duration] of Object.entries({idle:8,'polite-bow':7,'hello-wave':6,'duck-spot':7,'balance-back':6,'tiny-dance':5,'ball-follow':8})){
@@ -49,4 +49,15 @@ test('get-up lies flat on the shell before rising, and the waddle alternates fee
   assert.ok(sampleMotion('get-up',7.8).tip<.001);
   assert.ok(sampleMotion('waddle',.8).lift>1 && sampleMotion('waddle',.8).liftL===0);
   assert.ok(sampleMotion('waddle',2).liftL>1 && sampleMotion('waddle',2).lift===0);
+});
+
+test('battle gait alternates planted and swinging feet and loops without a jump',()=>{
+  for(let p=0;p<1;p+=.01){
+    const g=sampleGait(p);
+    assert.ok(g.lift===0 || g.liftL===0,'both feet in the air');
+    for(const v of Object.values(g))assert.ok(Number.isFinite(v));
+  }
+  const a=sampleGait(0),b=sampleGait(.9999);
+  for(const key of Object.keys(a))assert.ok(Math.abs(a[key]-b[key])<.01,`gait ${key} jumps at wrap`);
+  assert.ok(sampleGait(.75).lift>1.5 && sampleGait(.25).liftL>1.5);
 });
