@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "prestart": "npm run build:frontend",
-    "start": "node server/app.js",
+    "start": "node server/start.js",
     "dev:frontend": "vite --config frontend/vite.config.js",
     "build:frontend": "vite build --config frontend/vite.config.js",
     "preview:frontend": "vite preview --config frontend/vite.config.js",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
-    "motion": "^13.4.4"
+    "motion": "^13.4.4",
+    "pg": "^8.23.1"
   }
 }

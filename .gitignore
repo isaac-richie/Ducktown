@@ -6,6 +6,7 @@ work/
 *.log
 .env
 .env.*
+!.env.example
 playwright-report/
 test-results/
 .vercel/

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 
-const initial = () => ({version:1, robots:[{id:'pepper',name:'Pepper',mode:'simulation',hardwareConnected:false,owner:'local-demo'}], posts:[],users:[],sessions:[],snapshots:[],receipts:[],postLikes:[],postReplies:[],follows:[],saves:[],notifications:[],reports:[]});
+export const initialState = () => ({version:1, robots:[{id:'pepper',name:'Pepper',mode:'simulation',hardwareConnected:false,owner:'local-demo'}], posts:[],users:[],sessions:[],snapshots:[],receipts:[],postLikes:[],postReplies:[],follows:[],saves:[],notifications:[],reports:[]});
 const missing=(message,status=404)=>Object.assign(new Error(message),{status});
 
 export class Store {
@@ -23,7 +23,7 @@ export class Store {
     else {
       let imported=null;
       if(this.legacyFile){try{imported=JSON.parse(await fs.readFile(this.legacyFile,'utf8'));}catch(error){if(error.code!=='ENOENT')throw error;}}
-      this.state=imported||initial();
+      this.state=imported||initialState();
       if(this.state.version!==1||!Array.isArray(this.state.posts)||!Array.isArray(this.state.robots))throw new Error('Unsupported or invalid Ducktown data file');
       this.db.prepare('INSERT OR IGNORE INTO app_state(id,document) VALUES(1,?)').run(JSON.stringify(this.state));
       this.refresh();
