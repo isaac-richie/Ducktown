@@ -33,7 +33,8 @@ const FOLLOW = .65;
 // The hero sits further back and a little higher, so the duck reads as a small robot in a big city.
 const PITCH = {min:-1.35, max:1.42, rest:.06};
 const HERO_RADIUS = 96, HERO_RADIUS_NARROW = 74, CARD_RADIUS = 58.9, CARD_PITCH = .177;
-// Phones and small screens get lighter city and robot files.
+// Phones and small screens get a lighter city photo. The robot is always full detail: the
+// simplified build faceted its curved shells and looked broken on phones.
 const LITE = matchMedia('(pointer:coarse),(max-width:760px)').matches;
 const VIEWS = [['Front',0,PITCH.rest,'Front'],['¾',.48,PITCH.rest,'Three-quarter'],['Side',1.4,PITCH.rest,'Side'],['Top',.48,1.35,'Top-down'],['Under',.48,-1.2,'Underneath']];
 // Servo model: commands refresh at the real controller's 50 Hz and each channel follows like a
@@ -518,7 +519,7 @@ class MicroduckView extends HTMLElement {
     try{
       const [replay,{ExactDuck,quatFromEuler}]=await Promise.all([import('./policy-replay.js'),import('./exact-duck.js')]);
       const onProgress=p=>{this.dataset.progress=String(Math.round(p*100));};
-      const [robot,tree]=await Promise.all([this.policyRobot||replay.loadPolicyRobot({lite:LITE,onProgress}),replay.loadTree()]);
+      const [robot,tree]=await Promise.all([this.policyRobot||replay.loadPolicyRobot({onProgress}),replay.loadTree()]);
       if(!this.scene)return robot.dispose?.();
       if(!this.policyRobot){
         this.policyRobot=robot;
@@ -559,7 +560,7 @@ class MicroduckView extends HTMLElement {
     try{
       const replay=await import('./policy-replay.js');
       if(!this.policyRobot){
-        this.policyRobot=await replay.loadPolicyRobot({lite:LITE});
+        this.policyRobot=await replay.loadPolicyRobot();
         this.policyRobot.root.matrix.premultiply(new THREE.Matrix4().makeTranslation(0,-.24,0));
         this.policyRobot.setColorway(PALETTES[this.variant]);
         this.scene?.add(this.policyRobot.root);

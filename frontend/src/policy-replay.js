@@ -5,11 +5,7 @@ import * as THREE from 'three';
 // world pose at 50 Hz. Nothing here is hand-animated; we only place meshes where the sim put them.
 // Robot model and policies: pollen-robotics/microduck_rl and microduck-policies (Apache-2.0).
 
-// Full detail for desktops; a lighter build (~45k triangles, ~0.45 MB) for phones.
-const ROBOT = {
-  full: [new URL('./policy/robot.json', import.meta.url).href, new URL('./policy/robot.bin', import.meta.url).href],
-  lite: [new URL('./policy/lite/robot.json', import.meta.url).href, new URL('./policy/lite/robot.bin', import.meta.url).href]
-};
+const ROBOT = [new URL('./policy/robot.json', import.meta.url).href, new URL('./policy/robot.bin', import.meta.url).href];
 const TREE_JSON = new URL('./policy/tree.json', import.meta.url).href;
 export const loadTree = () => fetch(TREE_JSON).then(r => r.json());
 const clipUrl = (name, ext) => new URL(`./policy/clips/${name}.${ext}`, import.meta.url).href;
@@ -61,8 +57,8 @@ async function fetchWithProgress(url, total, onProgress) {
   return out.buffer;
 }
 
-export async function loadPolicyRobot({lite = false, onProgress} = {}) {
-  const [jsonUrl, binUrl] = lite ? ROBOT.lite : ROBOT.full;
+export async function loadPolicyRobot({onProgress} = {}) {
+  const [jsonUrl, binUrl] = ROBOT;
   const meta = await fetch(jsonUrl).then(r => r.json());
   // Uncompressed size from the layout (transfer may be Brotli-compressed, so headers can't tell us).
   const total = Math.max(...meta.parts.map(p => p.indices + p.triangles * 3 * (p.index32 ? 4 : 2)));
