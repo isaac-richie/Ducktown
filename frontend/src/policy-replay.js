@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Replays of Pollen's official Microduck policies on Pollen's exact robot model.
 // Data comes from tools/policy-recorder (MuJoCo + Pollen's own inference code): every body's
@@ -65,10 +64,10 @@ export async function loadPolicyRobot() {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-    // Weld, then smooth shading that keeps the CAD's sharp edges (creases above 35°).
-    const smooth = toCreasedNormals(mergeVertices(geometry, 1e-5), THREE.MathUtils.degToRad(35));
-    geometry.dispose();
-    const mesh = new THREE.Mesh(smooth, materials.get(part.category) || materials.get('frame'));
+    // Smooth shading with sharp CAD edges kept, precomputed by tools/policy-recorder/pack_robot.py
+    // (doing it here froze the page for seconds).
+    geometry.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(buffer, part.normals, part.vertices * 3), 3, true));
+    const mesh = new THREE.Mesh(geometry, materials.get(part.category) || materials.get('frame'));
     mesh.castShadow = true; mesh.receiveShadow = true;
     bodies.get(part.body).add(mesh);
   }
