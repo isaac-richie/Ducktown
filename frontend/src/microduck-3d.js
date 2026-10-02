@@ -25,7 +25,8 @@ const mixGait = (a, b, t) => Object.fromEntries(Object.keys(a).map(key => [key, 
 const MODES = {
   walk: {label:'Real walk', icon:'≋', title:'A shuffle modelled on how Microduck walks. Hand-animated, not the trained policy.'},
   battle: {label:'Battle', icon:'⚡', title:'Just for fun: a stylised mech run, not a real Microduck gait.'},
-  policy: {label:'Real policies', icon:'◆', title:"Pollen's official trained policies on Pollen's exact robot, replayed from a MuJoCo simulation."}
+  policy: {label:'Real policies', icon:'◆', title:"Pollen's official trained policies on Pollen's exact robot, replayed from a MuJoCo simulation."},
+  disco: {label:'Disco', icon:'♪', title:"Dances to music using only the real Microduck's body-pose and head commands, within Pollen's trained ranges."}
 };
 // Orbit camera: free 360° yaw; pitch from underneath to straight above, stopping short of the
 // poles so the view never flips. 0.177 rad matches the original eye-level framing.
@@ -383,6 +384,7 @@ class MicroduckView extends HTMLElement {
     active.add(this);visibility.observe(this);resize.observe(this);wake();
   }
   disconnectedCallback() {
+    this.discoAudio?.stop();
     active.delete(this);visibility.unobserve(this);if(this.onGaze)window.removeEventListener('pointermove',this.onGaze);resize.unobserve(this);
     if(this.card)for(const event of ['pointerenter','pointerleave','focusin','focusout'])this.card.removeEventListener(event,this.cardWake);
     this.dock?.remove();this.controls?.remove();this.variantControls?.remove();this.modeControls?.remove();this.clipControls?.remove();this.policyRobot?.dispose();this.track?.geometry.dispose();this.track?.material.map.dispose();this.track?.material.dispose();this.status?.remove();
@@ -442,6 +444,16 @@ class MicroduckView extends HTMLElement {
       }
     });
     this.clipControls=clips;dock.append(clips);
+    // Duck Disco: a built-in royalty-free beat, your own song, and the dance as a real-robot score.
+    const disco=document.createElement('div');disco.className='robot-clip-controls robot-disco-controls';disco.hidden=true;
+    disco.setAttribute('role','group');disco.setAttribute('aria-label','Duck Disco music');
+    const discoButton=(label,title,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.title=title;b.addEventListener('click',fn);disco.append(b);return b;};
+    this.discoDemo=discoButton('Beat','Royalty-free beat made in your browser',()=>this.startDisco());
+    const file=document.createElement('input');file.type='file';file.accept='audio/*';file.hidden=true;
+    file.addEventListener('change',()=>{if(file.files[0])this.startDisco(file.files[0]);file.value='';});
+    this.discoSong=discoButton('Your song','Play a song from your device; the duck finds the beat',()=>file.click());
+    discoButton('Robot score','Download this dance as timed robot.pose / robot.head / robot.mouth commands',()=>this.downloadScore());
+    disco.append(file);this.discoControls=disco;dock.append(disco);
     const shellControls=document.createElement('div');
     shellControls.className='robot-shell-controls';
     shellControls.setAttribute('role','group');
@@ -482,6 +494,7 @@ class MicroduckView extends HTMLElement {
     const label=!webgl?'ROBOT ILLUSTRATION':
       this.mode==='battle'?`BATTLE · JUST FOR FUN, NOT A REAL GAIT · ${tap} TO STOMP`:
       this.mode==='walk'?`REAL WALK · HAND-ANIMATED SHUFFLE · ${tap} TO SAY HI`:
+      this.mode==='disco'?`DUCK DISCO · ${this.discoTrack||'STARTING…'} · SIMULATED WITH REAL ROBOT CONTROLS`:
       this.mode==='policy'?(this.clip?`SIMULATED · POLLEN'S OFFICIAL POLICY · ${this.clipNote.toUpperCase()} · ${tap} TO REPLAY`:'LOADING POLLEN\'S ROBOT…'):
       this.exact?(touch?'TAP THE BALL FOR A REAL KICK':'CLICK THE BALL FOR A REAL KICK · DRAG TO ORBIT'):
       (touch?'HOLD TO OPEN · SWIPE SIDEWAYS TO SPIN':'HOVER TO OPEN · DRAG TO ORBIT 360°');
@@ -508,9 +521,32 @@ class MicroduckView extends HTMLElement {
     this.closest('.featured-stage')?.classList.toggle('is-battle',mode==='battle');
     this.closest('.featured-stage')?.classList.toggle('is-walk',mode==='walk'||mode==='policy');
     if(this.clipControls)this.clipControls.hidden=mode!=='policy';
+    if(this.discoControls)this.discoControls.hidden=mode!=='disco';
+    if(mode==='disco'){if(!this.discoAudio?.playing)this.startDisco();}
+    else this.discoAudio?.stop();
     if(mode==='policy')this.playClip(this.clipName||'kick_right');
     else if(this.policyRobot && !this.exact){this.policyRobot.root.visible=false;this.robot.visible=true;}
     this.updateStatus();this.dirty=true;wake();
+  }
+  async startDisco(file){
+    // Audio may only start from a click, which is where this is always called from.
+    const {DiscoAudio,danceCommands}=await (this.discoModule??=import('./disco.js'));
+    this.danceCommands=danceCommands;this.discoAudio??=new DiscoAudio();
+    try{
+      if(file){this.discoTrack='FINDING THE BEAT…';this.updateStatus();await this.discoAudio.playFile(file);}
+      else this.discoAudio.playDemo();
+      this.discoTrack=`${file?file.name.replace(/\.[^.]+$/,'').slice(0,28).toUpperCase():'DEMO BEAT'} · ${Math.round(this.discoAudio.bpm)} BPM`;
+    }catch(error){console.warn('Ducktown: could not play that audio.',error);this.discoTrack='COULD NOT PLAY THAT FILE';}
+    if(this.mode!=='disco')this.discoAudio.stop();
+    this.discoDemo?.setAttribute('aria-pressed',String(!file));this.discoSong?.setAttribute('aria-pressed',String(!!file));
+    this.updateStatus();this.dirty=true;wake();
+  }
+  async downloadScore(){
+    const {buildScore}=await (this.discoModule??=import('./disco.js'));
+    const score=buildScore({bpm:this.discoAudio?.bpm||118});
+    const url=URL.createObjectURL(new Blob([JSON.stringify(score)],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download=`duck-disco-${Math.round(score.bpm)}bpm.json`;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   async loadExactDuck(){
     if(this.exactLoading)return;this.exactLoading=true;
@@ -597,7 +633,7 @@ class MicroduckView extends HTMLElement {
   }
   isAlive(){
     // Ambient life (breathing, weight shift, gaze) keeps the hero feeling present; cards wake on hover.
-    return motionEnabled() && this.visible && (this.isHero || this.isPlaying() || this.battleBlend>0 || this.walkBlend>0 || this.mode==='policy') && !this.stage?.classList.contains('is-paused');
+    return motionEnabled() && this.visible && (this.isHero || this.isPlaying() || this.battleBlend>0 || this.walkBlend>0 || this.discoBlend>0 || this.mode==='policy' || this.mode==='disco') && !this.stage?.classList.contains('is-paused');
   }
   pose(){
     const t=this.time, l=this.life, motion=sampleMotion(this.behavior,t);
@@ -611,6 +647,15 @@ class MicroduckView extends HTMLElement {
       // Stomp: quick wind-up, heavy drop, roar, recover.
       const x=this.stompT/.7,hit=Math.sin(Math.PI*Math.min(1,x*1.4))*(this.stompScale??1);
       motion.crouch+=1.4*hit;motion.jaw=Math.max(motion.jaw,.34*hit);motion.pitch-=.18*hit;motion.lean+=.08*hit;
+    }
+    const beat=this.discoBlend>0&&this.danceCommands?this.discoAudio?.now():null;
+    if(beat){
+      // The dance arrives as real robot commands (robot.pose / robot.head / robot.mouth) and is
+      // mapped onto the same channels, so the servo model and IK below treat it like any motion.
+      const c=this.danceCommands(beat.beat,beat.energy),k=this.discoBlend;
+      motion.crouch+=-c.pose.z/.008*k;motion.hipRoll+=c.pose.roll*k;motion.lean+=c.pose.pitch*k;
+      motion.neck+=c.head.neck_pitch*k;motion.pitch+=c.head.head_pitch*k;motion.yaw+=c.head.head_yaw*k;motion.roll+=c.head.head_roll*k;
+      motion.jaw=Math.max(motion.jaw,c.mouth.open*.3*k);
     }
     this.updateGlance(l);
     motion.yaw+=this.glance.yaw;motion.pitch+=this.glance.pitch;
@@ -740,6 +785,7 @@ class MicroduckView extends HTMLElement {
     // Ease into home over the last stretch so the duck stops on its spot rather than overshooting.
     if(this.returning)this.walkBlend=Math.min(this.walkBlend,Math.max(.08,remaining/.6));
     this.battleBlend=blend(this.battleBlend,this.mode==='battle'?1:0);
+    this.discoBlend=blend(this.discoBlend||0,this.mode==='disco'&&this.discoAudio?.playing?1:0);
     const sum=this.walkBlend+this.battleBlend,share=sum>0?this.battleBlend/sum:0;
     this.gaitTotal=Math.min(1,sum);this.gaitParams=mixGait(REAL_GAIT,GAIT,share);
     this.gaitPhase=(this.gaitPhase+dt*this.gaitParams.cadence*this.gaitTotal)%1;
@@ -771,7 +817,7 @@ class MicroduckView extends HTMLElement {
       // The plane's v axis points backward along the duck; lowering the offset carries stripes back with the planted foot.
       this.track.material.map.offset.y=(this.track.material.map.offset.y-dt*scroll/16+1)%1;
     }
-    if(this.ball)this.ball.visible=this.battleBlend<.5&&this.walkBlend<.5;
+    if(this.ball)this.ball.visible=this.battleBlend<.5&&this.walkBlend<.5&&!this.discoBlend;
     // Footfall impact: a small camera kick each time a foot plants, plus a big one for a stomp.
     const footfall=Math.max(0,Math.cos(this.gaitPhase*Math.PI*4))**12*this.battleBlend;
     const stompKick=this.stompT<.7?Math.max(0,Math.sin(Math.PI*Math.min(1,this.stompT/.7*1.4)))**6:0;
