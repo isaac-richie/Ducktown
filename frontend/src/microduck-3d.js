@@ -23,7 +23,6 @@ const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 const toHome = a => ((Math.PI*2 - a % (Math.PI*2)) % (Math.PI*2));
 const mixGait = (a, b, t) => Object.fromEntries(Object.keys(a).map(key => [key, a[key] + (b[key] - a[key]) * t]));
 const MODES = {
-  walk: {label:'Real walk', icon:'≋', title:'A shuffle modelled on how Microduck walks. Hand-animated, not the trained policy.'},
   battle: {label:'Battle', icon:'⚡', title:'Just for fun: a stylised mech run, not a real Microduck gait.'},
   policy: {label:'Real policies', icon:'◆', title:"Pollen's official trained policies on Pollen's exact robot, replayed from a MuJoCo simulation."},
   disco: {label:'Disco', icon:'♪', title:"Dances to music using only the real Microduck's body-pose and head commands, within Pollen's trained ranges."}
@@ -504,7 +503,6 @@ class MicroduckView extends HTMLElement {
     const tap=touch?'TAP':'CLICK';
     const label=!webgl?'ROBOT ILLUSTRATION':
       this.mode==='battle'?`BATTLE · JUST FOR FUN, NOT A REAL GAIT · ${tap} TO STOMP`:
-      this.mode==='walk'?`REAL WALK · HAND-ANIMATED SHUFFLE · ${tap} TO SAY HI`:
       this.mode==='disco'?`DUCK DISCO · ${this.currentStyle().toUpperCase()} · ${this.discoTrack||'STARTING…'} · SIMULATED WITH REAL ROBOT CONTROLS`:
       this.mode==='policy'?(this.clip?`SIMULATED · POLLEN'S OFFICIAL POLICY · ${this.clipNote.toUpperCase()} · ${tap} TO REPLAY`:'LOADING POLLEN\'S ROBOT…'):
       this.exact?(touch?'TAP THE BALL FOR A REAL KICK':'CLICK THE BALL FOR A REAL KICK · DRAG TO ORBIT'):
