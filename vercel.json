@@ -6,6 +6,9 @@
   "outputDirectory": "dist/frontend",
   "regions": ["dub1"],
   "functions": {
-    "api/v1/[...path].js": { "maxDuration": 15 }
-  }
+    "api/index.js": { "maxDuration": 15 }
+  },
+  "rewrites": [
+    { "source": "/api/v1/:path*", "destination": "/api/index?__path=:path*" }
+  ]
 }

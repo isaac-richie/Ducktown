@@ -1,6 +1,7 @@
-// Vercel Function: serves Ducktown's /api/v1/* with the same server code as `npm start`.
+// Vercel Function: serves Ducktown's /api/v1/* (via the rewrite in vercel.json) with the same
+// server code as `npm start`.
 // Static pages come from the Vite build (dist/frontend); only the API runs here.
-import { createApp } from '../../server/app.js';
+import { createApp } from '../server/app.js';
 
 let app = null;
 
@@ -24,7 +25,18 @@ async function getApp() {
   return app;
 }
 
+// vercel.json rewrites /api/v1/<path> to /api/index?__path=<path>; restore the original URL so the
+// app routes exactly as it does under `npm start` (nested paths like /api/v1/auth/login included).
+function restoreUrl(req) {
+  const url = new URL(req.url, 'http://local');
+  const path = url.searchParams.get('__path');
+  if (path === null) return;
+  url.searchParams.delete('__path');
+  req.url = `/api/v1/${path}${url.search}`;
+}
+
 export default async function handler(req, res) {
+  restoreUrl(req);
   try {
     const handle = await getApp();
     return handle(req, res);
