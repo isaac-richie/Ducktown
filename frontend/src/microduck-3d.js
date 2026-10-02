@@ -863,7 +863,9 @@ class MicroduckView extends HTMLElement {
     this.camera.lookAt(fx,target,fz);
     const bounds=this.getBoundingClientRect();
     if(bounds.width<1 || bounds.height<1)return;
-    const dpr=Math.min(devicePixelRatio||1,this.isHero?2:1.5),limit=this.isHero?1200:700,w=Math.min(limit,Math.round(bounds.width*dpr)),h=Math.min(limit,Math.round(bounds.height*dpr));
+    // Cap the pixel count on big screens with one scale factor for both sides: capping each side
+    // separately stretched the duck sideways on wide desktops.
+    const limit=this.isHero?1800:700,dpr=Math.min(devicePixelRatio||1,this.isHero?2:1.5,limit/Math.max(bounds.width,bounds.height)),w=Math.round(bounds.width*dpr),h=Math.round(bounds.height*dpr);
     if(this.canvas.width!==w || this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
     // The hero canvas fills the stage so the city has no gaps, but the duck keeps its old frame:
     // the band 32px below the top and 42px above the bottom, clear of the player bar.
