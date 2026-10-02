@@ -32,7 +32,9 @@ const MODES = {
 const FOLLOW = .65;
 // The hero sits further back and a little higher, so the duck reads as a small robot in a big city.
 const PITCH = {min:-1.35, max:1.42, rest:.06};
-const HERO_RADIUS = 96, CARD_RADIUS = 58.9, CARD_PITCH = .177;
+const HERO_RADIUS = 96, HERO_RADIUS_NARROW = 74, CARD_RADIUS = 58.9, CARD_PITCH = .177;
+// Phones and small screens get lighter city and robot files.
+const LITE = matchMedia('(pointer:coarse),(max-width:760px)').matches;
 const VIEWS = [['Front',0,PITCH.rest,'Front'],['¾',.48,PITCH.rest,'Three-quarter'],['Side',1.4,PITCH.rest,'Side'],['Top',.48,1.35,'Top-down'],['Under',.48,-1.2,'Underneath']];
 // Servo model: commands refresh at the real controller's 50 Hz and each channel follows like a
 // position-controlled motor (slightly underdamped: a tiny lag, overshoot and settle).
@@ -292,6 +294,8 @@ class MicroduckView extends HTMLElement {
     const fill=new THREE.DirectionalLight('#d4ecff',.7);fill.position.set(18,16,-15);this.scene.add(fill);this.fillLight=fill;
     const rim=new THREE.DirectionalLight('#f4e2bf',1.4);rim.position.set(6,24,-18);this.scene.add(rim);this.rimLight=rim;
     this.robot=buildRobot(this.variant);this.scene.add(this.robot);
+    // In the hero, Pollen's exact robot is the star: don't flash the illustrated placeholder while it loads.
+    if(this.isHero)this.robot.visible=false;
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
     this.floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.ShadowMaterial({opacity:.1}));
     this.floor.rotation.x=-Math.PI/2;this.floor.receiveShadow=true;this.floor.position.y=-.24;this.scene.add(this.floor);
@@ -458,7 +462,7 @@ class MicroduckView extends HTMLElement {
     this.scene.remove(this.robot);
     this.robot=buildRobot(variant);this.scene.add(this.robot);
     // The rebuilt illustrated duck stays hidden while Pollen's exact robot is on stage.
-    this.robot.visible=!this.policyRobot?.root.visible;
+    this.robot.visible=this.isHero?!!this.exactFailed:!this.policyRobot?.root.visible;
     this.head=this.robot.getObjectByName('head');this.neck=this.robot.getObjectByName('neck');this.jaw=this.robot.getObjectByName('jaw');
     for(const side of ['left','right'])for(const part of ['leg','shin','foot'])this.rig[`${part}-${side}`]=this.robot.getObjectByName(`${part}-${side}`);
     this.variant=variant;this.dataset.variant=variant;this.policyRobot?.setColorway(PALETTES[variant]);
@@ -510,7 +514,7 @@ class MicroduckView extends HTMLElement {
     // or replaying recorded policies. The hand-built duck is only the placeholder while it loads.
     try{
       const [replay,{ExactDuck,quatFromEuler}]=await Promise.all([import('./policy-replay.js'),import('./exact-duck.js')]);
-      const [robot,tree]=await Promise.all([this.policyRobot||replay.loadPolicyRobot(),replay.loadTree()]);
+      const [robot,tree]=await Promise.all([this.policyRobot||replay.loadPolicyRobot({lite:LITE}),replay.loadTree()]);
       if(!this.scene)return robot.dispose?.();
       if(!this.policyRobot){
         this.policyRobot=robot;
@@ -518,9 +522,9 @@ class MicroduckView extends HTMLElement {
         robot.setColorway(PALETTES[this.variant]);this.scene.add(robot.root);
       }
       this.replay=replay;this.exact=new ExactDuck(tree);this.quatFromEuler=quatFromEuler;
-      this.policyRobot.root.visible=true;this.robot.visible=false;
+      this.policyRobot.root.visible=true;this.robot.visible=false;this.dataset.exact='ready';
       this.updateStatus();this.dirty=true;wake();
-    }catch(error){console.warn('Ducktown: exact robot unavailable; keeping the illustrated duck.',error);}
+    }catch(error){console.warn('Ducktown: exact robot unavailable; keeping the illustrated duck.',error);this.exactFailed=true;this.robot.visible=true;this.dirty=true;wake();}
   }
   poseExact(motion,crouch,sway,breathe){
     // Ducktown motion -> Pollen's real joints. Scene is cm (y up, z forward); MuJoCo is m (z up, x forward).
@@ -551,7 +555,7 @@ class MicroduckView extends HTMLElement {
     try{
       const replay=await import('./policy-replay.js');
       if(!this.policyRobot){
-        this.policyRobot=await replay.loadPolicyRobot();
+        this.policyRobot=await replay.loadPolicyRobot({lite:LITE});
         this.policyRobot.root.matrix.premultiply(new THREE.Matrix4().makeTranslation(0,-.24,0));
         this.policyRobot.setColorway(PALETTES[this.variant]);
         this.scene?.add(this.policyRobot.root);
@@ -650,7 +654,7 @@ class MicroduckView extends HTMLElement {
     // The hero duck stands in a real city (a 360° photo capture). Built once the renderer exists,
     // because the photo's HDR light is prefiltered on the GPU for the duck's reflections.
     if(this.city || !this.isHero || !renderer)return;
-    this.city=buildCity({renderer});
+    this.city=buildCity({renderer,lite:LITE});
     this.loadExactDuck();
     this.scene.add(this.city.group);this.camera.far=this.city.farPlane;
     this.city.ready.then(ok=>{
@@ -792,7 +796,7 @@ class MicroduckView extends HTMLElement {
     }
     const [px,pz]=replaying?this.replay.clipTrunk(this.clip,Math.min(this.clipTime,this.clip.duration)).map(v=>v*FOLLOW):this.pathPoint().map(v=>v*FOLLOW),follow=motionEnabled()?1-Math.exp(-dt*4):1;
     this.focus.x+=(px-this.focus.x)*follow;this.focus.z+=(pz-this.focus.z)*follow;
-    const target=this.isHero?12.6:13,radius=this.isHero?HERO_RADIUS:CARD_RADIUS,flat=Math.cos(this.pitch)*radius,fx=this.focus.x,fz=this.focus.z+1.6;
+    const target=this.isHero?12.6:13,radius=this.isHero?(this.clientWidth<600?HERO_RADIUS_NARROW:HERO_RADIUS):CARD_RADIUS,flat=Math.cos(this.pitch)*radius,fx=this.focus.x,fz=this.focus.z+1.6;
     this.camera.position.set(fx+Math.sin(this.yaw)*flat+jitter,target+Math.sin(this.pitch)*radius+this.shake*Math.cos(this.life*70),fz+Math.cos(this.yaw)*flat);
     // Frame the taller, forward-leaning silhouette (head rides ahead of the hips).
     this.camera.lookAt(fx,target,fz);
@@ -806,7 +810,7 @@ class MicroduckView extends HTMLElement {
     // (left) by framing it in the right part of the stage.
     const scale=h/bounds.height,wide=bounds.width>=600&&bounds.width/bounds.height>.9;
     // Phones: the headline fills the top of the stage, so the duck stands in the lower half.
-    const top=this.isHero?bounds.height*(wide?.06:.52)*scale:0,bottom=this.isHero?(wide?96:150)*scale:0,frameH=this.isHero?h-top-bottom:h;
+    const top=this.isHero?bounds.height*(wide?.06:.42)*scale:0,bottom=this.isHero?(wide?96:150)*scale:0,frameH=this.isHero?h-top-bottom:h;
     this.camera.aspect=w/frameH;
     if(this.isHero)this.camera.setViewOffset(w,frameH,wide?-w*.2:0,-top,w,h);
     // Fit the full robot even in narrow containers; cards keep a roomy studio crop.

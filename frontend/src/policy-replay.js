@@ -5,8 +5,11 @@ import * as THREE from 'three';
 // world pose at 50 Hz. Nothing here is hand-animated; we only place meshes where the sim put them.
 // Robot model and policies: pollen-robotics/microduck_rl and microduck-policies (Apache-2.0).
 
-const ROBOT_JSON = new URL('./policy/robot.json', import.meta.url).href;
-const ROBOT_BIN = new URL('./policy/robot.bin', import.meta.url).href;
+// Full detail for desktops; a lighter build (~45k triangles, ~0.45 MB) for phones.
+const ROBOT = {
+  full: [new URL('./policy/robot.json', import.meta.url).href, new URL('./policy/robot.bin', import.meta.url).href],
+  lite: [new URL('./policy/lite/robot.json', import.meta.url).href, new URL('./policy/lite/robot.bin', import.meta.url).href]
+};
 const TREE_JSON = new URL('./policy/tree.json', import.meta.url).href;
 export const loadTree = () => fetch(TREE_JSON).then(r => r.json());
 const clipUrl = (name, ext) => new URL(`./policy/clips/${name}.${ext}`, import.meta.url).href;
@@ -40,10 +43,11 @@ const MJ_TO_SCENE = new THREE.Matrix4().set(
   0, 0, 0, 1
 );
 
-export async function loadPolicyRobot() {
+export async function loadPolicyRobot({lite = false} = {}) {
+  const [jsonUrl, binUrl] = lite ? ROBOT.lite : ROBOT.full;
   const [meta, buffer] = await Promise.all([
-    fetch(ROBOT_JSON).then(r => r.json()),
-    fetch(ROBOT_BIN).then(r => r.arrayBuffer())
+    fetch(jsonUrl).then(r => r.json()),
+    fetch(binUrl).then(r => r.arrayBuffer())
   ]);
   const root = new THREE.Group();
   root.name = 'pollen-microduck';

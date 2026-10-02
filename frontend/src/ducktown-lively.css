@@ -216,3 +216,26 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
   .hero-actions{flex-wrap:wrap}
   .hero-actions .button{width:auto!important;flex:0 1 auto;white-space:nowrap}
 }
+
+/* Instant preview: a 39 KB blurred city still fills the stage while the 3D loads (no dark void). */
+.hero-cinematic .featured-stage{background:#1a211e url('./city/neuer-zollhof-poster.jpg') center 40%/cover no-repeat}
+.hero-cinematic microduck-view:not([data-exact])::after{content:'Waking up the duckâ€¦';position:absolute;left:50%;top:62%;transform:translateX(-50%);z-index:3;
+  padding:8px 14px;border-radius:999px;background:rgba(12,18,16,.5);backdrop-filter:blur(10px);color:#eef3ea;font:600 11px 'DM Sans',system-ui,sans-serif;letter-spacing:.04em;animation:wake-pulse 1.6s ease-in-out infinite;white-space:nowrap}
+.hero-cinematic microduck-view[data-renderer="fallback"]::after{display:none}
+
+/* Phones: uncramped hero */
+@media(max-width:760px){
+  .hero-copy{top:20px;left:18px;right:18px}
+  .hero-copy .section-kicker{font-size:10px;letter-spacing:.16em}
+  .hero-copy h1{font-size:clamp(36px,10vw,46px);margin:8px 0 8px}
+  .hero-copy p{font-size:14px;line-height:1.45;max-width:32ch}
+  .hero-actions{gap:8px;margin-top:14px;flex-wrap:nowrap}
+  .hero-actions .button{padding:10px 14px;font-size:13px;min-height:40px}
+  .hero-cinematic .robot-render-label{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);bottom:118px;font-size:9px;padding:6px 11px!important}
+  .robot-dock{padding:6px;row-gap:4px}
+  .robot-dock :is(.robot-mode-controls,.robot-clip-controls) button{padding:8px 10px;min-height:36px;font-size:12.5px}
+  .robot-dock .robot-shell-controls button{width:22px!important;height:22px!important}
+  .robot-camera-toggle{width:34px;height:34px}
+}
+/* Phones: the whole stage (and its dock) fits between the top bar and the bottom tab bar. */
+@media(max-width:760px){.hero-cinematic .featured-stage{height:max(560px,calc(100svh - 168px))}}

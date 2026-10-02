@@ -7,21 +7,21 @@
   {
    "body": "trunk_base",
    "category": "shell",
-   "vertices": 23129,
-   "triangles": 23066,
+   "vertices": 9353,
+   "triangles": 7788,
    "positions": 0,
-   "normals": 138776,
-   "indices": 208164,
+   "normals": 56120,
+   "indices": 84180,
    "index32": false,
    "min": [
-    -0.046443600207567215,
-    -0.032268691807985306,
-    0.0002573475649114698
+    -0.04738187789916992,
+    -0.03499039635062218,
+    0.00015094010450411588
    ],
    "scale": [
-    1.235310492120334e-06,
-    9.770985798240872e-07,
-    6.373641667778429e-07
+    1.2494471093305037e-06,
+    1.0176048590437858e-06,
+    6.444142286454735e-07
    ]
   },
   {
@@ -29,9 +29,9 @@
    "category": "frame",
    "vertices": 402,
    "triangles": 264,
-   "positions": 346560,
-   "normals": 348972,
-   "indices": 350180,
+   "positions": 130908,
+   "normals": 133320,
+   "indices": 134528,
    "index32": false,
    "min": [
     -0.017119161784648895,
@@ -47,31 +47,31 @@
   {
    "body": "trunk_base",
    "category": "servo",
-   "vertices": 1472,
-   "triangles": 1099,
-   "positions": 351764,
-   "normals": 360596,
-   "indices": 365012,
+   "vertices": 521,
+   "triangles": 290,
+   "positions": 136112,
+   "normals": 139240,
+   "indices": 140804,
    "index32": false,
    "min": [
     -0.01850000023841858,
     -0.027499999850988388,
-    -0.003000000026077032
+    -0.0029999995604157448
    ],
    "scale": [
     5.188147156331979e-07,
     8.392590302719327e-07,
-    4.4251839881326305e-07
+    4.425183703915536e-07
    ]
   },
   {
    "body": "yaw2roll",
    "category": "frame",
-   "vertices": 2774,
-   "triangles": 2480,
-   "positions": 371608,
-   "normals": 388252,
-   "indices": 396576,
+   "vertices": 1087,
+   "triangles": 750,
+   "positions": 142544,
+   "normals": 149068,
+   "indices": 152332,
    "index32": false,
    "min": [
     -0.011500000022351742,
@@ -87,11 +87,11 @@
   {
    "body": "yaw2roll",
    "category": "servo",
-   "vertices": 1004,
-   "triangles": 736,
-   "positions": 411456,
-   "normals": 417480,
-   "indices": 420492,
+   "vertices": 382,
+   "triangles": 266,
+   "positions": 156832,
+   "normals": 159124,
+   "indices": 160272,
    "index32": false,
    "min": [
     -0.009999999776482582,
@@ -107,11 +107,11 @@
   {
    "body": "hip_l",
    "category": "frame",
-   "vertices": 5326,
-   "triangles": 4790,
-   "positions": 424908,
-   "normals": 456864,
-   "indices": 472844,
+   "vertices": 2249,
+   "triangles": 1701,
+   "positions": 161868,
+   "normals": 175364,
+   "indices": 182112,
    "index32": false,
    "min": [
     -0.009884440340101719,
@@ -119,7 +119,7 @@
     -0.028600100427865982
    ],
    "scale": [
-    5.010298878005415e-07,
+    5.010294898966094e-07,
     3.013938112417236e-07,
     5.397304221332888e-07
    ]
@@ -127,36 +127,36 @@
   {
    "body": "upper_leg_left",
    "category": "shell",
-   "vertices": 6185,
-   "triangles": 6736,
-   "positions": 501584,
-   "normals": 538696,
-   "indices": 557252,
+   "vertices": 1758,
+   "triangles": 1263,
+   "positions": 192320,
+   "normals": 202868,
+   "indices": 208144,
    "index32": false,
    "min": [
-    -0.013467418029904366,
-    -0.0121974628418684,
+    -0.014216264709830284,
+    -0.012197217904031277,
     -1.930094972735219e-10
    ],
    "scale": [
-    7.272471975738881e-07,
-    9.307377695222385e-07,
-    4.2932572341669584e-07
+    7.305599183382583e-07,
+    9.318837328464724e-07,
+    4.355040914560959e-07
    ]
   },
   {
    "body": "upper_leg_left",
    "category": "servo",
-   "vertices": 1948,
-   "triangles": 1453,
-   "positions": 597668,
-   "normals": 609356,
-   "indices": 615200,
+   "vertices": 679,
+   "triangles": 484,
+   "positions": 215724,
+   "normals": 219800,
+   "indices": 221840,
    "index32": false,
    "min": [
     -0.009999999776482582,
     -0.009499999694526196,
-    -0.0020000000949949026
+    -0.001999999862164259
    ],
    "scale": [
     6.332591055979719e-07,
@@ -167,31 +167,31 @@
   {
    "body": "upper_leg_left",
    "category": "frame",
-   "vertices": 1045,
-   "triangles": 718,
-   "positions": 623920,
-   "normals": 630192,
-   "indices": 633328,
+   "vertices": 370,
+   "triangles": 220,
+   "positions": 224744,
+   "normals": 226964,
+   "indices": 228076,
    "index32": false,
    "min": [
-    -0.011984657496213913,
-    -0.011142509989440441,
+    -0.011783904395997524,
+    -0.011235509999096394,
     4.4703482582342247e-10
    ],
    "scale": [
-    6.860041139589157e-07,
-    8.880492714524735e-07,
+    6.414101676455175e-07,
+    8.78772254964133e-07,
     1.5259228547392922e-08
    ]
   },
   {
    "body": "leg",
    "category": "frame",
-   "vertices": 4104,
-   "triangles": 3730,
-   "positions": 637636,
-   "normals": 662260,
-   "indices": 674572,
+   "vertices": 1668,
+   "triangles": 1198,
+   "positions": 229396,
+   "normals": 239404,
+   "indices": 244408,
    "index32": false,
    "min": [
     -0.010152934119105339,
@@ -207,11 +207,11 @@
   {
    "body": "leg",
    "category": "servo",
-   "vertices": 789,
-   "triangles": 577,
-   "positions": 696952,
-   "normals": 701688,
-   "indices": 704056,
+   "vertices": 429,
+   "triangles": 277,
+   "positions": 251596,
+   "normals": 254172,
+   "indices": 255460,
    "index32": false,
    "min": [
     -0.009999999776482582,
@@ -227,76 +227,76 @@
   {
    "body": "ankle_left",
    "category": "sole",
-   "vertices": 3238,
-   "triangles": 5524,
-   "positions": 707520,
-   "normals": 726948,
-   "indices": 736664,
+   "vertices": 1335,
+   "triangles": 1700,
+   "positions": 257124,
+   "normals": 265136,
+   "indices": 269144,
    "index32": false,
    "min": [
     -0.03400000184774399,
-    -0.025032438337802887,
+    -0.02505389414727688,
     -0.03524458780884743
    ],
    "scale": [
-    8.246026936831186e-07,
-    1.9704924625330023e-07,
-    6.271430947890622e-07
+    8.257181889348431e-07,
+    2.0012804213820345e-07,
+    6.271152415138204e-07
    ]
   },
   {
    "body": "ankle_left",
    "category": "trim",
-   "vertices": 10869,
-   "triangles": 12422,
-   "positions": 769808,
-   "normals": 835024,
-   "indices": 867632,
+   "vertices": 4526,
+   "triangles": 4688,
+   "positions": 279344,
+   "normals": 306500,
+   "indices": 320080,
    "index32": false,
    "min": [
-    -0.03400000184774399,
-    -0.023029273375868797,
+    -0.033999986946582794,
+    -0.023019904270768166,
     -0.03461918979883194
    ],
    "scale": [
-    8.23999755539262e-07,
-    4.928012913296698e-07,
-    6.116748636486591e-07
+    8.239995281655865e-07,
+    2.42635735503427e-07,
+    6.071757070458261e-07
    ]
   },
   {
    "body": "neck",
    "category": "frame",
-   "vertices": 923,
-   "triangles": 586,
-   "positions": 942164,
-   "normals": 947704,
-   "indices": 950476,
+   "vertices": 338,
+   "triangles": 180,
+   "positions": 348208,
+   "normals": 350236,
+   "indices": 351252,
    "index32": false,
    "min": [
-    -0.010000001639127731,
+    -0.00959812756627798,
     -0.030499998480081558,
     0.0009999999310821295
    ],
    "scale": [
-    3.0442262755059346e-07,
-    1.6785179468570277e-07,
+    2.9999210937603493e-07,
+    1.6456952778298728e-07,
     4.11999877769631e-07
    ]
   },
   {
    "body": "neck",
    "category": "servo",
-   "vertices": 1991,
-   "triangles": 1453,
-   "positions": 953992,
-   "normals": 965940,
-   "indices": 971916,
+   "vertices": 455,
+   "triangles": 292,
+   "positions": 352332,
+   "normals": 355064,
+   "indices": 356432,
    "index32": false,
    "min": [
     -0.009999999776482582,
     -0.05950000137090683,
-    -5.382111076257523e-11
+    -3.978172652407963e-11
    ],
    "scale": [
     3.051850967494829e-07,
@@ -307,31 +307,31 @@
   {
    "body": "neck_pitch",
    "category": "frame",
-   "vertices": 1695,
-   "triangles": 1438,
-   "positions": 980636,
-   "normals": 990808,
-   "indices": 995896,
+   "vertices": 993,
+   "triangles": 652,
+   "positions": 358184,
+   "normals": 364144,
+   "indices": 367124,
    "index32": false,
    "min": [
     -0.009376781061291695,
-    -0.009002006612718105,
+    -0.008890161290764809,
     -0.03200000151991844
    ],
    "scale": [
     2.839572346147179e-07,
-    4.2260677446392947e-07,
+    4.209000223909243e-07,
     5.340739903658687e-07
    ]
   },
   {
    "body": "yaw_roll_motion",
    "category": "frame",
-   "vertices": 2045,
-   "triangles": 1736,
-   "positions": 1004524,
-   "normals": 1016796,
-   "indices": 1022932,
+   "vertices": 800,
+   "triangles": 474,
+   "positions": 371036,
+   "normals": 375836,
+   "indices": 378236,
    "index32": false,
    "min": [
     -0.017900001257658005,
@@ -347,11 +347,11 @@
   {
    "body": "yaw_roll_motion",
    "category": "servo",
-   "vertices": 1028,
-   "triangles": 763,
-   "positions": 1033348,
-   "normals": 1039516,
-   "indices": 1042600,
+   "vertices": 466,
+   "triangles": 277,
+   "positions": 381080,
+   "normals": 383876,
+   "indices": 385276,
    "index32": false,
    "min": [
     -0.009999999776482582,
@@ -367,51 +367,51 @@
   {
    "body": "jaw_soft",
    "category": "lens",
-   "vertices": 1370,
-   "triangles": 1872,
-   "positions": 1047180,
-   "normals": 1055400,
-   "indices": 1059512,
+   "vertices": 432,
+   "triangles": 576,
+   "positions": 386940,
+   "normals": 389532,
+   "indices": 390828,
    "index32": false,
    "min": [
-    0.007030000444501638,
-    -0.008561377413570881,
+    0.00703412713482976,
+    -0.00855725072324276,
     -0.08179999887943268
    ],
    "scale": [
-    2.584917808690079e-07,
-    2.584917808690079e-07,
+    2.583658442745218e-07,
+    2.583658158528124e-07,
     2.8870505275335745e-07
    ]
   },
   {
    "body": "jaw_soft",
    "category": "face",
-   "vertices": 7701,
-   "triangles": 6846,
-   "positions": 1070744,
-   "normals": 1116952,
-   "indices": 1140056,
+   "vertices": 2534,
+   "triangles": 1885,
+   "positions": 394284,
+   "normals": 409488,
+   "indices": 417092,
    "index32": false,
    "min": [
     -0.00530000077560544,
-    -0.0439801849424839,
-    -0.07330001145601273
+    -0.04446685314178467,
+    -0.07330000400543213
    ],
    "scale": [
-    6.79679374115949e-07,
-    1.338452534582757e-06,
-    1.9324515676544252e-07
+    6.85674820033455e-07,
+    1.3458787861964083e-06,
+    1.9836451770061103e-07
    ]
   },
   {
    "body": "jaw_soft",
    "category": "servo",
-   "vertices": 1970,
-   "triangles": 1459,
-   "positions": 1181132,
-   "normals": 1192952,
-   "indices": 1198864,
+   "vertices": 435,
+   "triangles": 281,
+   "positions": 428404,
+   "normals": 431016,
+   "indices": 432324,
    "index32": false,
    "min": [
     -0.009999999776482582,
@@ -427,91 +427,91 @@
   {
    "body": "jaw_soft",
    "category": "mouth",
-   "vertices": 4348,
-   "triangles": 7250,
-   "positions": 1207620,
-   "normals": 1233708,
-   "indices": 1246752,
+   "vertices": 806,
+   "triangles": 704,
+   "positions": 434012,
+   "normals": 438848,
+   "indices": 441268,
    "index32": false,
    "min": [
-    -0.015816500410437584,
-    -0.04391249269247055,
-    -0.07614777982234955
+    -0.015738533809781075,
+    -0.04389876127243042,
+    -0.07613202184438705
    ],
    "scale": [
-    1.5139040954181837e-07,
-    1.3401111118582776e-06,
-    4.981696406503033e-07
+    1.4972998485518474e-07,
+    1.3396718259173213e-06,
+    4.979260666004848e-07
    ]
   },
   {
    "body": "jaw_soft",
    "category": "frame",
-   "vertices": 1051,
-   "triangles": 722,
-   "positions": 1290252,
-   "normals": 1296560,
-   "indices": 1299716,
+   "vertices": 290,
+   "triangles": 222,
+   "positions": 445492,
+   "normals": 447232,
+   "indices": 448104,
    "index32": false,
    "min": [
-    -0.004109414294362068,
-    -0.039500001817941666,
-    -0.044199999421834946
+    -0.004100000485777855,
+    -0.03667999804019928,
+    -0.03776165097951889
    ],
    "scale": [
-    2.8701765586447436e-07,
-    1.1215553286092472e-06,
-    8.328383955813479e-07
+    2.868740125450131e-07,
+    6.498661377918324e-07,
+    6.330486144179304e-07
    ]
   },
   {
    "body": "jaw_soft",
    "category": "shell",
-   "vertices": 6857,
-   "triangles": 8866,
-   "positions": 1304048,
-   "normals": 1345192,
-   "indices": 1365764,
+   "vertices": 3387,
+   "triangles": 3484,
+   "positions": 449436,
+   "normals": 469760,
+   "indices": 479924,
    "index32": false,
    "min": [
-    -0.0045030503533780575,
-    -0.045879654586315155,
-    -0.08419002592563629
+    -0.004501913674175739,
+    -0.04632274806499481,
+    -0.08417371660470963
    ],
    "scale": [
-    7.070945002851659e-07,
-    1.400180963173625e-06,
-    1.8724364281297312e-06
+    7.070368042150221e-07,
+    1.4178109495333047e-06,
+    1.8770008409774164e-06
    ]
   },
   {
    "body": "jaw_soft",
    "category": "trim",
-   "vertices": 15419,
-   "triangles": 15898,
-   "positions": 1418960,
-   "normals": 1511476,
-   "indices": 1557736,
+   "vertices": 3982,
+   "triangles": 3334,
+   "positions": 500828,
+   "normals": 524720,
+   "indices": 536668,
    "index32": false,
    "min": [
-    -0.01744273118674755,
-    -0.04587981477379799,
-    -0.08215545862913132
+    -0.0176708921790123,
+    -0.04599733650684357,
+    -0.07773827761411667
    ],
    "scale": [
-    7.315347261283023e-07,
-    1.4001166164234746e-06,
-    1.8466442952558282e-06
+    4.54091946266999e-07,
+    1.399323764417204e-06,
+    1.7465139308114885e-06
    ]
   },
   {
    "body": "bearing_roll",
    "category": "frame",
-   "vertices": 2774,
-   "triangles": 2480,
-   "positions": 1653124,
-   "normals": 1669768,
-   "indices": 1678092,
+   "vertices": 1087,
+   "triangles": 750,
+   "positions": 556672,
+   "normals": 563196,
+   "indices": 566460,
    "index32": false,
    "min": [
     -0.011500000022351742,
@@ -527,11 +527,11 @@
   {
    "body": "bearing_roll",
    "category": "servo",
-   "vertices": 1004,
-   "triangles": 736,
-   "positions": 1692972,
-   "normals": 1698996,
-   "indices": 1702008,
+   "vertices": 382,
+   "triangles": 266,
+   "positions": 570960,
+   "normals": 573252,
+   "indices": 574400,
    "index32": false,
    "min": [
     -0.009999999776482582,
@@ -547,11 +547,11 @@
   {
    "body": "hip_l_2",
    "category": "frame",
-   "vertices": 5326,
-   "triangles": 4790,
-   "positions": 1706424,
-   "normals": 1738380,
-   "indices": 1754360,
+   "vertices": 2249,
+   "triangles": 1701,
+   "positions": 575996,
+   "normals": 589492,
+   "indices": 596240,
    "index32": false,
    "min": [
     -0.009884440340101719,
@@ -559,7 +559,7 @@
     -0.028600100427865982
    ],
    "scale": [
-    5.010298878005415e-07,
+    5.010294898966094e-07,
     3.013938112417236e-07,
     5.397304221332888e-07
    ]
@@ -567,16 +567,16 @@
   {
    "body": "upper_leg_right",
    "category": "servo",
-   "vertices": 1941,
-   "triangles": 1447,
-   "positions": 1783100,
-   "normals": 1794748,
-   "indices": 1800572,
+   "vertices": 689,
+   "triangles": 486,
+   "positions": 606448,
+   "normals": 610584,
+   "indices": 612652,
    "index32": false,
    "min": [
     -0.03150000050663948,
     -0.009499999694526196,
-    -0.0020000000949949026
+    -0.001999999862164259
    ],
    "scale": [
     6.332591055979719e-07,
@@ -587,51 +587,51 @@
   {
    "body": "upper_leg_right",
    "category": "frame",
-   "vertices": 1050,
-   "triangles": 718,
-   "positions": 1809256,
-   "normals": 1815556,
-   "indices": 1818708,
+   "vertices": 355,
+   "triangles": 220,
+   "positions": 615568,
+   "normals": 617700,
+   "indices": 618768,
    "index32": false,
    "min": [
-    -0.03297193720936775,
-    -0.011142509989440441,
+    -0.030250269919633865,
+    -0.011235509999096394,
     1.2516975234078132e-09
    ],
    "scale": [
-    6.860041139589157e-07,
-    8.880492714524735e-07,
+    6.414101676455175e-07,
+    8.890270919437171e-07,
     1.5259228547392922e-08
    ]
   },
   {
    "body": "upper_leg_right",
    "category": "shell",
-   "vertices": 6225,
-   "triangles": 6736,
-   "positions": 1823016,
-   "normals": 1860368,
-   "indices": 1879044,
+   "vertices": 1830,
+   "triangles": 1367,
+   "positions": 620088,
+   "normals": 631068,
+   "indices": 636560,
    "index32": false,
    "min": [
-    -0.03419199958443642,
-    -0.012197463773190975,
+    -0.03419175371527672,
+    -0.012197218835353851,
     -2.758281103520943e-10
    ],
    "scale": [
-    7.272471975738881e-07,
-    9.307692607762874e-07,
-    4.308110987949476e-07
+    7.323204727072152e-07,
+    9.313851592196443e-07,
+    4.3196419596824853e-07
    ]
   },
   {
    "body": "leg_2",
    "category": "servo",
-   "vertices": 797,
-   "triangles": 581,
-   "positions": 1919460,
-   "normals": 1924244,
-   "indices": 1926636,
+   "vertices": 439,
+   "triangles": 281,
+   "positions": 644764,
+   "normals": 647400,
+   "indices": 648720,
    "index32": false,
    "min": [
     -0.051500000059604645,
@@ -647,11 +647,11 @@
   {
    "body": "leg_2",
    "category": "frame",
-   "vertices": 4104,
-   "triangles": 3730,
-   "positions": 1930124,
-   "normals": 1954748,
-   "indices": 1967060,
+   "vertices": 1668,
+   "triangles": 1198,
+   "positions": 650408,
+   "normals": 660416,
+   "indices": 665420,
    "index32": false,
    "min": [
     -0.047311220318078995,
@@ -667,41 +667,41 @@
   {
    "body": "ankle_right",
    "category": "trim",
-   "vertices": 10444,
-   "triangles": 12438,
-   "positions": 1989440,
-   "normals": 2052104,
-   "indices": 2083436,
+   "vertices": 5085,
+   "triangles": 5544,
+   "positions": 672608,
+   "normals": 703120,
+   "indices": 718376,
    "index32": false,
    "min": [
     -0.019999999552965164,
     -0.023027723655104637,
-    -0.03461918979883194
+    -0.03456100821495056
    ],
    "scale": [
-    8.23999755539262e-07,
-    4.970199825038435e-07,
-    6.116748636486591e-07
+    8.239995281655865e-07,
+    2.427550498396158e-07,
+    6.152856713015353e-07
    ]
   },
   {
    "body": "ankle_right",
    "category": "sole",
-   "vertices": 3266,
-   "triangles": 5564,
-   "positions": 2158064,
-   "normals": 2177660,
-   "indices": 2187460,
+   "vertices": 1281,
+   "triangles": 1712,
+   "positions": 751640,
+   "normals": 759328,
+   "indices": 763172,
    "index32": false,
    "min": [
-    -0.02003217674791813,
-    -0.02503397688269615,
-    -0.03524463623762131
+    -0.0200757198035717,
+    -0.025043437257409096,
+    -0.035245250910520554
    ],
    "scale": [
-    8.255970556092507e-07,
-    1.9989455779523269e-07,
-    6.271329198170861e-07
+    8.261164907708007e-07,
+    2.002753234364718e-07,
+    6.271422989811981e-07
    ]
   }
  ]

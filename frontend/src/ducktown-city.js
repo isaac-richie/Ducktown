@@ -13,9 +13,10 @@ export const GROUND_RADIUS = 4000;
 const FLOOR_Y = -.24; // matches the duck's shadow-catcher floor
 
 const BACKDROP_URL = new URL('./city/neuer-zollhof-4k.jpg', import.meta.url).href;
+const BACKDROP_LITE_URL = new URL('./city/neuer-zollhof-2k.jpg', import.meta.url).href;
 const LIGHTING_URL = new URL('./city/neuer-zollhof-1k.hdr', import.meta.url).href;
 
-export function buildCity({renderer}) {
+export function buildCity({renderer, lite = false}) {
   const group = new THREE.Group();
   group.name = 'ducktown-city';
   const disposables = [];
@@ -27,19 +28,25 @@ export function buildCity({renderer}) {
   disposables.push(grid.geometry, grid.material);
   group.add(grid);
 
-  const backdrop = new THREE.TextureLoader().loadAsync(BACKDROP_URL).then(texture => {
+  // Phones: a 2K photo (~0.4 MB) that also provides the lighting, instead of 4K photo + HDR (~3 MB).
+  const backdrop = new THREE.TextureLoader().loadAsync(lite ? BACKDROP_LITE_URL : BACKDROP_URL).then(texture => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     return texture;
   });
-  const lighting = new HDRLoader().loadAsync(LIGHTING_URL).then(hdr => {
-    hdr.mapping = THREE.EquirectangularReflectionMapping;
+  const prefilter = source => {
     const pmrem = new THREE.PMREMGenerator(renderer);
-    const env = pmrem.fromEquirectangular(hdr).texture;
-    pmrem.dispose(); hdr.dispose();
+    const env = pmrem.fromEquirectangular(source).texture;
+    pmrem.dispose();
     return env;
-  });
+  };
+  const lighting = lite
+    ? backdrop.then(prefilter)
+    : new HDRLoader().loadAsync(LIGHTING_URL).then(hdr => {
+      hdr.mapping = THREE.EquirectangularReflectionMapping;
+      const env = prefilter(hdr); hdr.dispose(); return env;
+    });
 
   const ready = Promise.all([backdrop, lighting]).then(([texture, env]) => {
     if (disposed) { texture.dispose(); env.dispose(); return false; }

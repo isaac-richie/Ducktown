@@ -40,6 +40,19 @@ def category(mesh):
     return "frame", .2
 
 
+def cluster(v, f, cell):
+    """Vertex clustering: snap corners to a grid of `cell` metres and merge them. Unlike edge
+    collapse it also reduces messy CAD parts (screws, embossed text, disconnected shells)."""
+    keys, inv = np.unique(np.floor(v / cell).astype(np.int64), axis=0, return_inverse=True)
+    inv = inv.reshape(-1)
+    sums = np.zeros((len(keys), 3)); np.add.at(sums, inv, v)
+    counts = np.bincount(inv, minlength=len(keys))[:, None]
+    faces = inv[f]
+    faces = faces[(faces[:, 0] != faces[:, 1]) & (faces[:, 1] != faces[:, 2]) & (faces[:, 0] != faces[:, 2])]
+    _, keep = np.unique(np.sort(faces, axis=1), axis=0, return_index=True)
+    return (sums / counts).astype(np.float32), faces[np.sort(keep)]
+
+
 def creased_normals(v, f, crease_deg=35.0):
     """Smooth vertex normals that keep sharp CAD edges, precomputed so the browser does no work.
     Each face corner averages the (area-weighted) normals of faces sharing its vertex whose normal is
@@ -106,9 +119,21 @@ def main():
     kept = 0
     for (body, cat), g in groups.items():
         v = np.concatenate(g["v"]).astype(np.float32); f = np.concatenate(g["f"]).astype(np.int64)
+        # CAD/STL meshes come unwelded (every triangle has its own corners), which blocks the
+        # simplifier: weld coincident corners first and drop triangles that collapse.
+        keys, weld = np.unique(np.round(v / 1e-6).astype(np.int64), axis=0, return_inverse=True)
+        weld = weld.reshape(-1)
+        v = np.zeros((len(keys), 3), np.float32); v[weld] = np.concatenate(g["v"]).astype(np.float32)
+        f = weld[f]
+        f = f[(f[:, 0] != f[:, 1]) & (f[:, 1] != f[:, 2]) & (f[:, 0] != f[:, 2])]
         ratio = min(1.0, g["keep"] * budget)
         if ratio < .98 and len(f) > 400:
+            want = max(200, int(len(f) * ratio))
             v, f = fast_simplification.simplify(v, f, target_reduction=1 - ratio)
+            # Edge collapse stalls on messy CAD (servos): fall back to coarser clustering.
+            cell = .0006
+            while len(f) > want * 1.6 and cell < .006:
+                v, f = cluster(v, f, cell); cell *= 1.5
         v, normals, f = creased_normals(v, f)
         lo, hi = v.min(0), v.max(0)
         scale = np.maximum(hi - lo, 1e-9) / 65534.0
