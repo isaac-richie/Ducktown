@@ -1,7 +1,11 @@
-# The visual preview only needs browser source and build configuration.
-# Never upload the local database, SDK checkout, evidence, or backup files.
+# Upload only what the deployment needs: the browser app, the API function and server code.
+# Never upload local databases, SDK checkouts, evidence, tests output or backups.
 /*
 !frontend
+!api
+!server
 !package.json
 !package-lock.json
 !vercel.json
+server/*.test.js
+server/test-helpers.js

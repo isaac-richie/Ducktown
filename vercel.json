@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "VITE_DUCKTOWN_STATIC_PREVIEW=1 npm run build:frontend",
-  "outputDirectory": "dist/frontend"
+  "buildCommand": "npm run build:frontend",
+  "outputDirectory": "dist/frontend",
+  "regions": ["dub1"],
+  "functions": {
+    "api/v1/[...path].js": { "maxDuration": 15 }
+  }
 }

@@ -87,7 +87,9 @@ export async function createApp(options={}) {
         }
         const token=cookieToken(req);
         const user=token?store.userForTokenHash(tokenHash(token)):null;
-        const forwardedIp=publicUrl&&loopback(req.socket.remoteAddress)?req.headers['x-real-ip']:null;
+        // Behind a trusted proxy the socket address is the proxy's: loopback reverse proxy, or Vercel
+        // (options.trustProxy), which overwrites x-real-ip with the real client address.
+        const forwardedIp=(publicUrl&&loopback(req.socket.remoteAddress))||options.trustProxy?req.headers['x-real-ip']:null;
         const clientIp=typeof forwardedIp==='string'&&isIP(forwardedIp)?forwardedIp:req.socket.remoteAddress;
         const addressKey=tokenHash(clientIp||'unknown');
         const allowed=async(scope,actor,limit,windowMs)=>{
