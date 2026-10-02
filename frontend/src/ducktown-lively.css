@@ -243,3 +243,8 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .hero-cinematic microduck-view[data-progress]:not([data-exact])::after{content:'Waking up the duckâ€¦ ' attr(data-progress) '%'}
 /* Phones: keep the caption centred in every mode (an older walk/battle rule pinned it to the left). */
 @media(max-width:760px){.hero-cinematic .featured-stage:is(.is-battle,.is-walk) .robot-render-label,.hero-cinematic .featured-stage .robot-render-label{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+/* Phones: the camera menu opens centred above the whole dock instead of over the mode buttons. */
+@media(max-width:760px){
+  .robot-dock .robot-camera{position:static}
+  .robot-dock .robot-angle-controls{left:50%!important;right:auto!important;transform:translateX(-50%);bottom:calc(100% + 8px)!important;z-index:6;white-space:nowrap}
+}
