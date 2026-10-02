@@ -8,8 +8,10 @@ test('robot controls preserve appearance, pause motion, and honor reduced motion
   await expect(robot).toHaveAttribute('data-renderer','webgl',{timeout:20000});
   await page.getByRole('button',{name:'Sky shell',exact:true}).click();
   await expect(robot).toHaveAttribute('data-variant','sky');
+  await page.getByRole('button',{name:'Camera views',exact:true}).click();
   await page.getByRole('button',{name:'Front robot view',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Front robot view',exact:true})).toHaveAttribute('aria-pressed','true');
+  // Picking a view closes the camera menu; the choice is still recorded on the (now hidden) button.
+  await expect(page.getByRole('button',{name:'Front robot view',exact:true,includeHidden:true})).toHaveAttribute('aria-pressed','true');
   await page.getByRole('button',{name:'Pause all motion',exact:true}).click();
   const paused=await robot.getAttribute('data-pose-time');
   await page.waitForTimeout(250);

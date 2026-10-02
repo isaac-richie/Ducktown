@@ -129,3 +129,88 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 @media(max-width:760px){.robot-clip-controls{bottom:150px}.robot-clip-controls button{min-height:40px}}
 @media(max-width:600px){.robot-clip-controls{right:auto;left:16px;top:112px;bottom:auto}}
 @media(min-width:601px){.featured-stage .robot-render-label{margin-bottom:3px;padding-block:2px}}
+
+/* ============================================================
+   Cinematic hero (v2): full-bleed city stage, copy over a soft
+   scrim, one frosted control dock. Supersedes earlier hero rules.
+   ============================================================ */
+.hero-cinematic{display:block;padding:0;margin:0 0 30px;border:0!important;background:none;box-shadow:none!important;border-radius:0}
+.hero-cinematic .featured-stage{position:relative;height:clamp(560px,82vh,880px);min-height:0;border-radius:28px;overflow:clip;background:#1a211e;border:0;box-shadow:0 40px 80px -40px rgba(12,24,20,.55)}
+.hero-cinematic .featured-stage:before{display:none}
+.hero-cinematic .featured-stage:after{content:'';display:block;position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,rgba(9,13,18,.66) 0%,rgba(9,13,18,.3) 34%,rgba(9,13,18,0) 58%),linear-gradient(0deg,rgba(9,13,18,.5) 0%,rgba(9,13,18,0) 30%)}
+.hero-cinematic microduck-view>canvas{transition:opacity .9s ease}
+
+.hero-copy{position:absolute;z-index:3;left:clamp(22px,4.2vw,64px);bottom:clamp(118px,15vh,160px);max-width:min(560px,46%);display:block;margin:0;padding:0;color:#fff}
+.hero-copy .section-kicker{color:#ffd2ad;letter-spacing:.22em;font-size:11px}
+.hero-copy h1{color:#fff!important;font-size:clamp(46px,6.2vw,96px);line-height:.9;margin:14px 0 16px;text-shadow:0 2px 30px rgba(0,0,0,.25)}
+.hero-copy h1 em{color:#ffb27a!important}
+.hero-copy p{color:rgba(255,255,255,.86);font-size:clamp(15px,1.25vw,18px);line-height:1.55;max-width:440px;margin:0}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.hero-actions .button{border:0!important;box-shadow:none!important;border-radius:999px;padding:12px 20px;font-weight:700;transition:transform .25s var(--spring),background .2s}
+.hero-actions .button:hover{transform:translateY(-1px)}
+.button-light{background:#fff7ec;color:#16231e}
+.button-ghost{background:rgba(255,255,255,.12);color:#fff;backdrop-filter:blur(10px)}
+.button-ghost:hover{background:rgba(255,255,255,.2)}
+
+/* Status caption: one small pill, top right */
+.hero-cinematic .robot-render-label{display:block!important;position:absolute;z-index:3;left:auto;right:20px;top:20px;bottom:auto;margin:0;max-width:min(420px,60%);
+  padding:7px 12px!important;border-radius:999px;background:rgba(12,18,16,.5);backdrop-filter:blur(12px);color:#eef3ea;font:600 10px 'Space Grotesk';letter-spacing:.12em;white-space:normal;opacity:1}
+
+/* The dock */
+.robot-dock{position:absolute;z-index:4;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:7px;border-radius:20px;
+  background:rgba(14,20,18,.55);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);border:1px solid rgba(255,255,255,.14);box-shadow:0 24px 50px -24px rgba(0,0,0,.7);max-width:calc(100% - 32px)}
+.robot-dock[hidden]{display:none}
+.robot-dock :is(.robot-mode-controls,.robot-shell-controls,.robot-clip-controls){position:static!important;inset:auto!important;transform:none;background:none;border:0;box-shadow:none;padding:0;margin:0;backdrop-filter:none;display:flex;flex-direction:row;align-items:center;gap:3px}
+.robot-dock .robot-clip-controls[hidden]{display:none}
+.robot-dock :is(.robot-shell-controls,.robot-camera){padding-left:8px;margin-left:4px;border-left:1px solid rgba(255,255,255,.14)}
+.robot-dock .robot-clip-controls:not([hidden]){padding-left:8px;margin-left:4px;border-left:1px solid rgba(255,255,255,.14)}
+.robot-dock :is(.robot-mode-controls,.robot-clip-controls) button{border:0!important;box-shadow:none!important;background:transparent;color:#e7eee3;border-radius:13px;padding:9px 13px;min-height:38px;font:600 12.5px 'DM Sans',system-ui,sans-serif;letter-spacing:0;text-transform:none;transform:none;transition:background .2s,color .2s}
+.robot-dock :is(.robot-mode-controls,.robot-clip-controls) button:hover{background:rgba(255,255,255,.1)}
+.robot-dock :is(.robot-mode-controls,.robot-clip-controls) button[aria-pressed="true"]{background:#fff7ec;color:#14211c}
+.robot-dock .robot-mode-controls button[data-mode="battle"][aria-pressed="true"]{background:#ffb27a}
+.robot-dock .robot-mode-controls button span{opacity:.75;margin-right:2px}
+.robot-dock .robot-shell-controls>span{display:none}
+.robot-dock .robot-shell-controls button{width:24px!important;height:24px!important;border-radius:50%!important;border:2px solid rgba(255,255,255,.35)!important;box-shadow:none!important;transform:none!important;transition:transform .25s var(--spring),border-color .2s}
+.robot-dock .robot-shell-controls button:hover{transform:scale(1.12)!important}
+.robot-dock .robot-shell-controls button[aria-pressed="true"]{border-color:#fff!important;box-shadow:0 0 0 2px rgba(255,255,255,.25)!important}
+
+.robot-camera{position:relative;display:flex}
+.robot-camera-toggle{width:38px;height:38px;border-radius:13px;border:0;background:transparent;color:#e7eee3;display:grid;place-items:center}
+.robot-camera-toggle:hover,.robot-camera-toggle[aria-expanded="true"]{background:rgba(255,255,255,.12)}
+.robot-camera-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
+.robot-dock .robot-angle-controls{position:absolute!important;top:auto!important;right:0!important;left:auto!important;bottom:calc(100% + 14px)!important;display:flex;gap:2px;padding:5px;border-radius:14px;
+  background:rgba(14,20,18,.72);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.14)}
+.robot-dock .robot-angle-controls[hidden]{display:none}
+.robot-dock .robot-angle-controls button{border-radius:10px;padding:8px 11px;color:#e7eee3;font:600 12px 'DM Sans',system-ui,sans-serif;letter-spacing:0;min-height:34px}
+.robot-dock .robot-angle-controls button[aria-pressed="true"]{background:#fff7ec;color:#14211c}
+
+.featured-below{margin-top:0}
+
+@media(max-width:760px){
+  .hero-cinematic .featured-stage{height:min(86svh,760px);border-radius:22px}
+  .hero-cinematic .featured-stage:after{background:linear-gradient(180deg,rgba(9,13,18,.6) 0%,rgba(9,13,18,.15) 36%,rgba(9,13,18,0) 55%),linear-gradient(0deg,rgba(9,13,18,.55) 0%,rgba(9,13,18,0) 26%)}
+  .hero-copy{top:22px;bottom:auto;left:20px;right:20px;max-width:none}
+  .hero-copy h1{font-size:clamp(40px,11vw,58px);margin:10px 0 10px}
+  .hero-copy p{font-size:14px}
+  .hero-actions{margin-top:14px}
+  .hero-actions .button{padding:10px 16px;font-size:13px}
+  .hero-cinematic .robot-render-label{top:auto;bottom:86px;right:12px;left:12px;max-width:none;text-align:center;font-size:9px}
+  .robot-dock{left:10px;right:10px;bottom:12px;transform:none;max-width:none;overflow-x:auto;justify-content:space-between;scrollbar-width:none}
+  .robot-dock :is(.robot-mode-controls,.robot-clip-controls) button{padding:9px 10px;font-size:12px}
+}
+.robot-dock button{white-space:nowrap}
+.hero-copy h1{font-size:clamp(42px,5.2vw,96px)}
+.hero-copy{max-width:min(520px,44%)}
+@media(max-width:760px){.hero-copy{max-width:none}.hero-copy h1{font-size:clamp(40px,11vw,58px)}}
+@media(max-width:760px){
+  .robot-dock{overflow:visible;flex-wrap:wrap;justify-content:center;row-gap:6px}
+  .robot-dock .robot-mode-controls{flex:1 1 100%;justify-content:center}
+  .robot-dock .robot-shell-controls{border-left:0;margin-left:0;padding-left:0}
+  .robot-dock .robot-clip-controls:not([hidden]){flex:1 1 100%;justify-content:center;border-left:0;margin-left:0;padding-left:0}
+  .hero-cinematic .robot-render-label{bottom:128px}
+}
+@media(max-width:760px){
+  .hero-actions{flex-wrap:wrap}
+  .hero-actions .button{width:auto!important;flex:0 1 auto;white-space:nowrap}
+}

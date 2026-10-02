@@ -378,7 +378,7 @@ class MicroduckView extends HTMLElement {
   disconnectedCallback() {
     active.delete(this);visibility.unobserve(this);if(this.onGaze)window.removeEventListener('pointermove',this.onGaze);resize.unobserve(this);
     if(this.card)for(const event of ['pointerenter','pointerleave','focusin','focusout'])this.card.removeEventListener(event,this.cardWake);
-    this.controls?.remove();this.variantControls?.remove();this.modeControls?.remove();this.clipControls?.remove();this.policyRobot?.dispose();this.track?.geometry.dispose();this.track?.material.map.dispose();this.track?.material.dispose();this.status?.remove();
+    this.dock?.remove();this.controls?.remove();this.variantControls?.remove();this.modeControls?.remove();this.clipControls?.remove();this.policyRobot?.dispose();this.track?.geometry.dispose();this.track?.material.map.dispose();this.track?.material.dispose();this.status?.remove();
     // Shared robot geometry/materials are retained by the four template rigs.
     this.ball?.geometry.dispose();this.ball?.material.dispose();
     this.floor?.geometry.dispose();this.floor?.material.dispose();this.city?.dispose();
@@ -387,6 +387,10 @@ class MicroduckView extends HTMLElement {
     if(!active.size){cancelAnimationFrame(frame);frame=0;}
   }
   makeControls() {
+    // One frosted dock holds every control: modes (+ policy clips), shell colours and a camera menu.
+    const dock=document.createElement('div');dock.className='robot-dock';
+    dock.setAttribute('role','toolbar');dock.setAttribute('aria-label','Robot controls');
+    this.dock=dock;this.parentElement.append(dock);
     const group=document.createElement('div');group.className='robot-angle-controls';
     group.setAttribute('role','group');group.setAttribute('aria-label','Robot viewing angle');
     for(const [label,yaw,pitch,name] of VIEWS){
@@ -397,9 +401,18 @@ class MicroduckView extends HTMLElement {
         // Take the short way round, however many times the view has been spun.
         this.orbitTo(this.targetYaw+wrapAngle(yaw-this.targetYaw),pitch);
         for(const b of group.children)b.setAttribute('aria-pressed',String(b===button));
+        // Close the camera menu after a choice.
+        group.hidden=true;this.cameraControl?.querySelector('.robot-camera-toggle')?.setAttribute('aria-expanded','false');
       });group.append(button);
     }
-    this.controls=group;this.parentElement.append(group);
+    this.controls=group;
+    // Camera views live in a small popover; the dock stays uncluttered.
+    const camera=document.createElement('div');camera.className='robot-camera';
+    const cameraButton=document.createElement('button');cameraButton.type='button';cameraButton.className='robot-camera-toggle';
+    cameraButton.setAttribute('aria-label','Camera views');cameraButton.setAttribute('aria-expanded','false');
+    cameraButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+    cameraButton.addEventListener('click',()=>{const open=group.hidden;group.hidden=!open;cameraButton.setAttribute('aria-expanded',String(open));});
+    group.hidden=true;camera.append(cameraButton,group);
     const modes=document.createElement('div');modes.className='robot-mode-controls';
     modes.setAttribute('role','group');modes.setAttribute('aria-label','Robot motion mode');
     for(const [mode,info] of Object.entries(MODES)){
@@ -409,7 +422,7 @@ class MicroduckView extends HTMLElement {
       button.addEventListener('click',()=>this.setMode(this.mode===mode?'idle':mode));
       modes.append(button);
     }
-    this.modeControls=modes;this.parentElement.append(modes);
+    this.modeControls=modes;dock.append(modes);
     // Clip picker for the real-policy replays (shown only in that mode).
     const clips=document.createElement('div');clips.className='robot-clip-controls';clips.hidden=true;
     clips.setAttribute('role','group');clips.setAttribute('aria-label','Pollen policy replay');
@@ -421,7 +434,7 @@ class MicroduckView extends HTMLElement {
         clips.append(button);
       }
     });
-    this.clipControls=clips;this.parentElement.append(clips);
+    this.clipControls=clips;dock.append(clips);
     const shellControls=document.createElement('div');
     shellControls.className='robot-shell-controls';
     shellControls.setAttribute('role','group');
@@ -436,7 +449,7 @@ class MicroduckView extends HTMLElement {
       button.addEventListener('click',()=>this.setVariant(name));
       shellControls.append(button);
     }
-    this.variantControls=shellControls;this.parentElement.append(shellControls);
+    this.variantControls=shellControls;dock.append(shellControls,camera);this.cameraControl=camera;
     const status=document.createElement('span');status.className='robot-render-label';
     this.status=status;this.parentElement.append(status);this.updateStatus();
   }
@@ -463,14 +476,14 @@ class MicroduckView extends HTMLElement {
       this.mode==='battle'?`BATTLE · JUST FOR FUN, NOT A REAL GAIT · ${tap} TO STOMP`:
       this.mode==='walk'?`REAL WALK · HAND-ANIMATED SHUFFLE · ${tap} TO SAY HI`:
       this.mode==='policy'?(this.clip?`SIMULATED · POLLEN'S OFFICIAL POLICY · ${this.clipNote.toUpperCase()} · ${tap} TO REPLAY`:'LOADING POLLEN\'S ROBOT…'):
-      this.exact?(touch?'TAP THE BALL TO KICK IT · SWIPE TO SPIN':'CLICK THE BALL TO KICK IT · DRAG TO ORBIT 360°'):
+      this.exact?(touch?'TAP THE BALL FOR A REAL KICK':'CLICK THE BALL FOR A REAL KICK · DRAG TO ORBIT'):
       (touch?'HOLD TO OPEN · SWIPE SIDEWAYS TO SPIN':'HOVER TO OPEN · DRAG TO ORBIT 360°');
+    if(this.dock)this.dock.hidden=!webgl;
     if(this.modeControls){
       this.modeControls.hidden=!webgl;
       for(const button of this.modeControls.children)button.disabled=!motionEnabled();
     }
     if(this.status && this.status.textContent!==label)this.status.textContent=label;
-    if(this.controls && this.controls.hidden===webgl)this.controls.hidden=!webgl;
     if(this.variantControls && this.variantControls.hidden===webgl)this.variantControls.hidden=!webgl;
   }
   orbitTo(yaw,pitch){
@@ -789,9 +802,13 @@ class MicroduckView extends HTMLElement {
     if(this.canvas.width!==w || this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
     // The hero canvas fills the stage so the city has no gaps, but the duck keeps its old frame:
     // the band 32px below the top and 42px above the bottom, clear of the player bar.
-    const scale=h/bounds.height,frameH=this.isHero?h-74*scale:h;
+    // Cinematic hero: keep the duck clear of the dock (bottom) and, on wide screens, of the headline
+    // (left) by framing it in the right part of the stage.
+    const scale=h/bounds.height,wide=bounds.width>=600&&bounds.width/bounds.height>.9;
+    // Phones: the headline fills the top of the stage, so the duck stands in the lower half.
+    const top=this.isHero?bounds.height*(wide?.06:.52)*scale:0,bottom=this.isHero?(wide?96:150)*scale:0,frameH=this.isHero?h-top-bottom:h;
     this.camera.aspect=w/frameH;
-    if(this.isHero)this.camera.setViewOffset(w,frameH,0,-32*scale,w,h);
+    if(this.isHero)this.camera.setViewOffset(w,frameH,wide?-w*.2:0,-top,w,h);
     // Fit the full robot even in narrow containers; cards keep a roomy studio crop.
     this.camera.fov=this.isHero?32:34;
     if(this.camera.aspect<.85)this.camera.fov=39;
