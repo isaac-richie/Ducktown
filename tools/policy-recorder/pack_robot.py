@@ -132,7 +132,8 @@ def main():
             v, f = fast_simplification.simplify(v, f, target_reduction=1 - ratio)
             # Edge collapse stalls on messy CAD (servos): fall back to coarser clustering.
             cell = .0006
-            while len(f) > want * 1.6 and cell < .006:
+            # Only for hidden-ish mechanics: on visible shells it shreds curved surfaces into shards.
+            while cat in ("servo", "frame") and len(f) > want * 1.6 and cell < .006:
                 v, f = cluster(v, f, cell); cell *= 1.5
         v, normals, f = creased_normals(v, f)
         lo, hi = v.min(0), v.max(0)

@@ -43,12 +43,30 @@ const MJ_TO_SCENE = new THREE.Matrix4().set(
   0, 0, 0, 1
 );
 
-export async function loadPolicyRobot({lite = false} = {}) {
+// Stream a binary file, reporting progress (0..1) against its known uncompressed size.
+async function fetchWithProgress(url, total, onProgress) {
+  const response = await fetch(url);
+  if (!response.ok || !response.body || !onProgress) return response.arrayBuffer();
+  const reader = response.body.getReader(), chunks = [];
+  let received = 0;
+  for (;;) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    chunks.push(value); received += value.length;
+    onProgress(Math.min(1, received / total));
+  }
+  const out = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+  return out.buffer;
+}
+
+export async function loadPolicyRobot({lite = false, onProgress} = {}) {
   const [jsonUrl, binUrl] = lite ? ROBOT.lite : ROBOT.full;
-  const [meta, buffer] = await Promise.all([
-    fetch(jsonUrl).then(r => r.json()),
-    fetch(binUrl).then(r => r.arrayBuffer())
-  ]);
+  const meta = await fetch(jsonUrl).then(r => r.json());
+  // Uncompressed size from the layout (transfer may be Brotli-compressed, so headers can't tell us).
+  const total = Math.max(...meta.parts.map(p => p.indices + p.triangles * 3 * (p.index32 ? 4 : 2)));
+  const buffer = await fetchWithProgress(binUrl, total, onProgress);
   const root = new THREE.Group();
   root.name = 'pollen-microduck';
   root.matrixAutoUpdate = false;

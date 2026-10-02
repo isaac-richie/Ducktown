@@ -239,3 +239,7 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 }
 /* Phones: the whole stage (and its dock) fits between the top bar and the bottom tab bar. */
 @media(max-width:760px){.hero-cinematic .featured-stage{height:max(560px,calc(100svh - 168px))}}
+/* Loading note shows real progress once the robot download is streaming */
+.hero-cinematic microduck-view[data-progress]:not([data-exact])::after{content:'Waking up the duckâ€¦ ' attr(data-progress) '%'}
+/* Phones: keep the caption centred in every mode (an older walk/battle rule pinned it to the left). */
+@media(max-width:760px){.hero-cinematic .featured-stage:is(.is-battle,.is-walk) .robot-render-label,.hero-cinematic .featured-stage .robot-render-label{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}

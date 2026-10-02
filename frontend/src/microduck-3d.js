@@ -377,6 +377,8 @@ class MicroduckView extends HTMLElement {
         for(const button of this.controls.children)button.setAttribute('aria-pressed','false');
       });
     }
+    // Hero: start downloading Pollen's robot right away, in parallel with the 3D engine and city.
+    if(this.isHero)this.loadExactDuck();
     active.add(this);visibility.observe(this);resize.observe(this);wake();
   }
   disconnectedCallback() {
@@ -510,11 +512,13 @@ class MicroduckView extends HTMLElement {
     this.updateStatus();this.dirty=true;wake();
   }
   async loadExactDuck(){
+    if(this.exactLoading)return;this.exactLoading=true;
     // Pollen's exact robot becomes the hero: driven through its 14 real joints by our motion system,
     // or replaying recorded policies. The hand-built duck is only the placeholder while it loads.
     try{
       const [replay,{ExactDuck,quatFromEuler}]=await Promise.all([import('./policy-replay.js'),import('./exact-duck.js')]);
-      const [robot,tree]=await Promise.all([this.policyRobot||replay.loadPolicyRobot({lite:LITE}),replay.loadTree()]);
+      const onProgress=p=>{this.dataset.progress=String(Math.round(p*100));};
+      const [robot,tree]=await Promise.all([this.policyRobot||replay.loadPolicyRobot({lite:LITE,onProgress}),replay.loadTree()]);
       if(!this.scene)return robot.dispose?.();
       if(!this.policyRobot){
         this.policyRobot=robot;
@@ -655,7 +659,6 @@ class MicroduckView extends HTMLElement {
     // because the photo's HDR light is prefiltered on the GPU for the duck's reflections.
     if(this.city || !this.isHero || !renderer)return;
     this.city=buildCity({renderer,lite:LITE});
-    this.loadExactDuck();
     this.scene.add(this.city.group);this.camera.far=this.city.farPlane;
     this.city.ready.then(ok=>{
       if(!ok || !this.scene)return;
