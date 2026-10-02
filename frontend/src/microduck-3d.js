@@ -454,6 +454,17 @@ class MicroduckView extends HTMLElement {
     this.discoSong=discoButton('Your song','Play a song from your device; the duck finds the beat',()=>file.click());
     discoButton('Robot score','Download this dance as timed robot.pose / robot.head / robot.mouth commands',()=>this.downloadScore());
     disco.append(file);this.discoControls=disco;dock.append(disco);
+    const styles=document.createElement('div');styles.className='robot-clip-controls robot-dance-styles';styles.hidden=true;
+    styles.setAttribute('role','group');styles.setAttribute('aria-label','Dance style');this.danceStyle='auto';
+    import('./disco.js').then(({DANCE_STYLES})=>{
+      for(const style of DANCE_STYLES){
+        const b=document.createElement('button');b.type='button';b.dataset.style=style.id;b.textContent=style.label;b.title=style.note;
+        b.setAttribute('aria-pressed',String(style.id===this.danceStyle));
+        b.addEventListener('click',()=>{this.danceStyle=style.id;for(const o of styles.children)o.setAttribute('aria-pressed',String(o===b));this.updateStatus();});
+        styles.append(b);
+      }
+    });
+    this.styleControls=styles;dock.append(styles);
     const shellControls=document.createElement('div');
     shellControls.className='robot-shell-controls';
     shellControls.setAttribute('role','group');
@@ -494,7 +505,7 @@ class MicroduckView extends HTMLElement {
     const label=!webgl?'ROBOT ILLUSTRATION':
       this.mode==='battle'?`BATTLE · JUST FOR FUN, NOT A REAL GAIT · ${tap} TO STOMP`:
       this.mode==='walk'?`REAL WALK · HAND-ANIMATED SHUFFLE · ${tap} TO SAY HI`:
-      this.mode==='disco'?`DUCK DISCO · ${this.discoTrack||'STARTING…'} · SIMULATED WITH REAL ROBOT CONTROLS`:
+      this.mode==='disco'?`DUCK DISCO · ${this.currentStyle().toUpperCase()} · ${this.discoTrack||'STARTING…'} · SIMULATED WITH REAL ROBOT CONTROLS`:
       this.mode==='policy'?(this.clip?`SIMULATED · POLLEN'S OFFICIAL POLICY · ${this.clipNote.toUpperCase()} · ${tap} TO REPLAY`:'LOADING POLLEN\'S ROBOT…'):
       this.exact?(touch?'TAP THE BALL FOR A REAL KICK':'CLICK THE BALL FOR A REAL KICK · DRAG TO ORBIT'):
       (touch?'HOLD TO OPEN · SWIPE SIDEWAYS TO SPIN':'HOVER TO OPEN · DRAG TO ORBIT 360°');
@@ -522,6 +533,7 @@ class MicroduckView extends HTMLElement {
     this.closest('.featured-stage')?.classList.toggle('is-walk',mode==='walk'||mode==='policy');
     if(this.clipControls)this.clipControls.hidden=mode!=='policy';
     if(this.discoControls)this.discoControls.hidden=mode!=='disco';
+    if(this.styleControls)this.styleControls.hidden=mode!=='disco';
     if(mode==='disco'){if(!this.discoAudio?.playing)this.startDisco();}
     else this.discoAudio?.stop();
     if(mode==='policy')this.playClip(this.clipName||'kick_right');
@@ -530,8 +542,8 @@ class MicroduckView extends HTMLElement {
   }
   async startDisco(file){
     // Audio may only start from a click, which is where this is always called from.
-    const {DiscoAudio,danceCommands}=await (this.discoModule??=import('./disco.js'));
-    this.danceCommands=danceCommands;this.discoAudio??=new DiscoAudio();
+    const {DiscoAudio,danceCommands,styleForTempo}=await (this.discoModule??=import('./disco.js'));
+    this.danceCommands=danceCommands;this.styleForTempo=styleForTempo;this.discoAudio??=new DiscoAudio();
     try{
       if(file){this.discoTrack='FINDING THE BEAT…';this.updateStatus();await this.discoAudio.playFile(file);}
       else this.discoAudio.playDemo();
@@ -541,11 +553,12 @@ class MicroduckView extends HTMLElement {
     this.discoDemo?.setAttribute('aria-pressed',String(!file));this.discoSong?.setAttribute('aria-pressed',String(!!file));
     this.updateStatus();this.dirty=true;wake();
   }
+  currentStyle(){return this.danceStyle==='auto'?this.styleForTempo?.(this.discoAudio?.bpm||118)||'mix':this.danceStyle;}
   async downloadScore(){
     const {buildScore}=await (this.discoModule??=import('./disco.js'));
-    const score=buildScore({bpm:this.discoAudio?.bpm||118});
+    const score=buildScore({bpm:this.discoAudio?.bpm||118,style:this.danceStyle});
     const url=URL.createObjectURL(new Blob([JSON.stringify(score)],{type:'application/json'}));
-    const a=document.createElement('a');a.href=url;a.download=`duck-disco-${Math.round(score.bpm)}bpm.json`;a.click();
+    const a=document.createElement('a');a.href=url;a.download=`duck-disco-${score.style}-${Math.round(score.bpm)}bpm.json`;a.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   async loadExactDuck(){
@@ -652,7 +665,7 @@ class MicroduckView extends HTMLElement {
     if(beat){
       // The dance arrives as real robot commands (robot.pose / robot.head / robot.mouth) and is
       // mapped onto the same channels, so the servo model and IK below treat it like any motion.
-      const c=this.danceCommands(beat.beat,beat.energy),k=this.discoBlend;
+      const c=this.danceCommands(beat.beat,beat.energy,this.currentStyle()),k=this.discoBlend;
       motion.crouch+=-c.pose.z/.008*k;motion.hipRoll+=c.pose.roll*k;motion.lean+=c.pose.pitch*k;
       motion.neck+=c.head.neck_pitch*k;motion.pitch+=c.head.head_pitch*k;motion.yaw+=c.head.head_yaw*k;motion.roll+=c.head.head_roll*k;
       motion.jaw=Math.max(motion.jaw,c.mouth.open*.3*k);
@@ -817,7 +830,7 @@ class MicroduckView extends HTMLElement {
       // The plane's v axis points backward along the duck; lowering the offset carries stripes back with the planted foot.
       this.track.material.map.offset.y=(this.track.material.map.offset.y-dt*scroll/16+1)%1;
     }
-    if(this.ball)this.ball.visible=this.battleBlend<.5&&this.walkBlend<.5&&!this.discoBlend;
+    if(this.ball)this.ball.visible=this.battleBlend<.5&&this.walkBlend<.5&&!this.discoBlend&&this.mode!=='policy';
     // Footfall impact: a small camera kick each time a foot plants, plus a big one for a stomp.
     const footfall=Math.max(0,Math.cos(this.gaitPhase*Math.PI*4))**12*this.battleBlend;
     const stompKick=this.stompT<.7?Math.max(0,Math.sin(Math.PI*Math.min(1,this.stompT/.7*1.4)))**6:0;

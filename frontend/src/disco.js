@@ -15,7 +15,18 @@ const sym = (v, m) => Math.min(m, Math.max(-m, v));
 
 // beat: running beat count (float, e.g. 12.25 = a quarter after beat 12); energy: 0..1 loudness.
 // Returns the command set for this instant. Pure, so it can be tested and exported.
-export function danceCommands(beat, energy = .7) {
+export const DANCE_STYLES = [
+  {id: 'auto', label: 'Auto', note: 'Picks a style from the song tempo'},
+  {id: 'mix', label: 'Mix', note: 'Sway, bow, wiggle and look, a new move every bar'},
+  {id: 'groove', label: 'Groove', note: 'Slow, deep hip sway'},
+  {id: 'headbang', label: 'Headbang', note: 'Big nods on every beat'},
+  {id: 'robot', label: 'Robot', note: 'Sharp moves that snap and hold'},
+  {id: 'shuffle', label: 'Shuffle', note: 'Quick side-to-side rocking'}
+];
+export const styleForTempo = bpm => bpm < 100 ? 'groove' : bpm < 126 ? 'mix' : bpm < 142 ? 'shuffle' : 'headbang';
+
+export function danceCommands(beat, energy = .7, style = 'mix') {
+  if (STYLE_MOVES[style]) return limit(STYLE_MOVES[style](beat, Math.min(1, Math.max(0, energy))), beat);
   const b = beat - Math.floor(beat), n = Math.floor(beat), e = Math.min(1, Math.max(0, energy));
   const bar = Math.floor(n / 4), inBar = n % 4, section = bar % 4; // change it up every bar
   const hit = Math.exp(-b * 7);                                   // sharp accent right on the beat
@@ -26,13 +37,44 @@ export function danceCommands(beat, energy = .7) {
   if (section === 1) { pitch = .12 * hit; yaw *= .5; }             // bow-bounce bar
   if (section === 2) { roll *= -1; tilt = -.25 * Math.sin(Math.PI * beat); } // head-wiggle bar
   if (section === 3) { yaw = .42 * Math.sign(Math.sin(Math.PI * beat / 2)) * (1 - hit * .3); } // look left/right
+  return limit({z, roll, pitch, neck: -.08 * hit, nod: nod - .05, yaw, tilt, mouth: inBar === 0 ? Math.min(1, hit * 1.2) : .15 * hit}, beat);
+}
+
+// Each style returns raw channels; limit() clamps them to the real robot's ranges.
+const STYLE_MOVES = {
+  groove: (beat, e) => {
+    const b = beat % 1, sway = Math.sin(Math.PI * beat / 2), hit = Math.exp(-b * 4);
+    return {z: -.014 * Math.abs(sway) - .004 * hit, roll: .2 * sway, pitch: .03 * Math.sin(Math.PI * beat),
+      neck: 0, nod: .06 * hit, yaw: .2 * Math.sin(Math.PI * beat / 4), tilt: -.22 * sway, mouth: .1 * hit * e};
+  },
+  headbang: (beat, e) => {
+    const b = beat % 1, hit = Math.exp(-b * 6);
+    return {z: -.02 * hit * (.6 + .4 * e), roll: .05 * Math.sin(Math.PI * beat), pitch: .16 * hit,
+      neck: -.18 * hit, nod: .3 * hit - .08, yaw: .1 * Math.sin(Math.PI * beat / 4), tilt: 0, mouth: .6 * hit};
+  },
+  robot: (beat, e) => {
+    // Hold a pose for each beat, snapping to the next within a few hundredths of a beat.
+    const n = Math.floor(beat), b = beat % 1, snap = Math.min(1, b / .08), poses = [[-1, .3, 0], [1, -.3, .2], [0, 0, -.2], [1, .4, 0]];
+    const [p0, p1] = [poses[(n + 3) % 4], poses[n % 4]], mix = i => p0[i] + (p1[i] - p0[i]) * snap;
+    return {z: n % 2 ? -.016 : -.006, roll: .16 * mix(0), pitch: .1 * mix(2), neck: 0, nod: .2 * mix(2),
+      yaw: .42 * mix(1) * 1.2, tilt: .2 * mix(0), mouth: b < .1 ? .5 : 0};
+  },
+  shuffle: (beat, e) => {
+    const b = beat % 1, rock = Math.sin(2 * Math.PI * beat / 2 * 2), hit = Math.exp(-b * 8);
+    return {z: -.012 * hit - .006 * Math.abs(rock), roll: .2 * Math.sign(rock) * Math.min(1, Math.abs(rock) * 3), pitch: .04 * hit,
+      neck: 0, nod: .12 * hit, yaw: -.25 * rock, tilt: .15 * rock, mouth: .2 * hit};
+  }
+};
+
+function limit({z, roll, pitch, neck, nod, yaw, tilt, mouth}, beat) {
+  const n = Math.floor(beat), bar = Math.floor(n / 4), b = beat - n;
   return {
     pose: {z: clamp(z, POSE_LIMITS.z), roll: clamp(roll, POSE_LIMITS.roll), pitch: clamp(pitch, POSE_LIMITS.pitch)},
-    head: {neck_pitch: sym(-.08 * hit, HEAD_LIMITS.neck_pitch), head_pitch: sym(nod - .05, HEAD_LIMITS.head_pitch),
+    head: {neck_pitch: sym(neck, HEAD_LIMITS.neck_pitch), head_pitch: sym(nod, HEAD_LIMITS.head_pitch),
       head_yaw: sym(yaw, HEAD_LIMITS.head_yaw), head_roll: sym(tilt, HEAD_LIMITS.head_roll)},
-    mouth: {open: inBar === 0 ? Math.min(1, hit * 1.2) : .15 * hit},
+    mouth: {open: Math.min(1, Math.max(0, mouth))},
     // A voice cue on the first beat of every second bar (robot.sound is a one-shot tag).
-    sound: b < .06 && inBar === 0 && bar % 2 === 1 ? ['chirp', 'coo', 'greet'][bar % 3] : null
+    sound: b < .06 && n % 4 === 0 && bar % 2 === 1 ? ['chirp', 'coo', 'greet'][bar % 3] : null
   };
 }
 
@@ -149,14 +191,15 @@ export class DiscoAudio {
 }
 
 // A timed score of real-robot commands (50 Hz), for driving a physical Microduck later.
-export function buildScore({bpm, seconds = 32, energy = .75}) {
+export function buildScore({bpm, seconds = 32, energy = .75, style = 'mix'}) {
+  if (style === 'auto') style = styleForTempo(bpm);
   const hz = 50, frames = [];
   for (let i = 0; i < seconds * hz; i++) {
-    const t = i / hz, c = danceCommands(t * bpm / 60, energy);
+    const t = i / hz, c = danceCommands(t * bpm / 60, energy, style);
     frames.push({t: +t.toFixed(3), 'robot.pose': c.pose, 'robot.head': c.head, 'robot.mouth': c.mouth, ...(c.sound ? {'robot.sound': {tag: c.sound}} : {})});
   }
   return {
-    format: 'ducktown-disco-score/1', bpm: +bpm.toFixed(2), hz,
+    format: 'ducktown-disco-score/1', style, bpm: +bpm.toFixed(2), hz,
     note: "Commands use pollen-robotics/microduck robot.* JSON-RPC params. robot.head values are offsets from the robot's default head pose. robot.pose stays inside Pollen's trained ranges.",
     frames
   };

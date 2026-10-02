@@ -26,3 +26,12 @@ test('score is 50 Hz robot commands', () => {
   assert.equal(score.frames.length, 200);
   assert.ok('robot.pose' in score.frames[0] && 'robot.head' in score.frames[0]);
 });
+
+test('every dance style stays inside the real robot ranges', async () => {
+  const {DANCE_STYLES} = await import('./disco.js');
+  for (const {id} of DANCE_STYLES) for (let b = 0; b < 32; b += .013) {
+    const {pose, head, mouth} = danceCommands(b, 1, id);
+    for (const v of [...Object.values(pose), ...Object.values(head), mouth.open]) assert.ok(Number.isFinite(v), id);
+    assert.ok(pose.z >= -0.025 && pose.z <= 0.010 && Math.abs(pose.roll) <= .26 && Math.abs(pose.pitch) <= .26, id);
+  }
+});
