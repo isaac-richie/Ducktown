@@ -16,14 +16,12 @@ const sym = (v, m) => Math.min(m, Math.max(-m, v));
 // beat: running beat count (float, e.g. 12.25 = a quarter after beat 12); energy: 0..1 loudness.
 // Returns the command set for this instant. Pure, so it can be tested and exported.
 export const DANCE_STYLES = [
-  {id: 'auto', label: 'Auto', note: 'Picks a style from the song tempo'},
   {id: 'mix', label: 'Mix', note: 'Sway, bow, wiggle and look, a new move every bar'},
   {id: 'groove', label: 'Groove', note: 'Slow, deep hip sway'},
   {id: 'headbang', label: 'Headbang', note: 'Big nods on every beat'},
-  {id: 'robot', label: 'Robot', note: 'Sharp moves that snap and hold'},
-  {id: 'shuffle', label: 'Shuffle', note: 'Quick side-to-side rocking'}
+  {id: 'robot', label: 'Robot', note: 'Sharp moves that snap and hold'}
 ];
-export const styleForTempo = bpm => bpm < 100 ? 'groove' : bpm < 126 ? 'mix' : bpm < 142 ? 'shuffle' : 'headbang';
+export const styleForTempo = bpm => bpm < 100 ? 'groove' : bpm < 142 ? 'mix' : 'headbang';
 
 export function danceCommands(beat, energy = .7, style = 'mix') {
   if (STYLE_MOVES[style]) return limit(STYLE_MOVES[style](beat, Math.min(1, Math.max(0, energy))), beat);
@@ -58,11 +56,6 @@ const STYLE_MOVES = {
     const [p0, p1] = [poses[(n + 3) % 4], poses[n % 4]], mix = i => p0[i] + (p1[i] - p0[i]) * snap;
     return {z: n % 2 ? -.016 : -.006, roll: .16 * mix(0), pitch: .1 * mix(2), neck: 0, nod: .2 * mix(2),
       yaw: .42 * mix(1) * 1.2, tilt: .2 * mix(0), mouth: b < .1 ? .5 : 0};
-  },
-  shuffle: (beat, e) => {
-    const b = beat % 1, rock = Math.sin(2 * Math.PI * beat / 2 * 2), hit = Math.exp(-b * 8);
-    return {z: -.012 * hit - .006 * Math.abs(rock), roll: .2 * Math.sign(rock) * Math.min(1, Math.abs(rock) * 3), pitch: .04 * hit,
-      neck: 0, nod: .12 * hit, yaw: -.25 * rock, tilt: .15 * rock, mouth: .2 * hit};
   }
 };
 

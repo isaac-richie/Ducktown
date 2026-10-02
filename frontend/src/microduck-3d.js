@@ -454,7 +454,7 @@ class MicroduckView extends HTMLElement {
     discoButton('Robot score','Download this dance as timed robot.pose / robot.head / robot.mouth commands',()=>this.downloadScore());
     disco.append(file);this.discoControls=disco;dock.append(disco);
     const styles=document.createElement('div');styles.className='robot-clip-controls robot-dance-styles';styles.hidden=true;
-    styles.setAttribute('role','group');styles.setAttribute('aria-label','Dance style');this.danceStyle='auto';
+    styles.setAttribute('role','group');styles.setAttribute('aria-label','Dance style');this.danceStyle='mix';
     import('./disco.js').then(({DANCE_STYLES})=>{
       for(const style of DANCE_STYLES){
         const b=document.createElement('button');b.type='button';b.dataset.style=style.id;b.textContent=style.label;b.title=style.note;
