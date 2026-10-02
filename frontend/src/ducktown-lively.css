@@ -1,22 +1,25 @@
-/* Lively layer: bold, sticker-like Ducktown look with springy motion.
+/* Ducktown design system v2: calm surfaces, one accent, soft depth, pill buttons, springy motion.
    Inspired by the Microduck family's playful energy, in Ducktown's own forest/citrus palette. */
 @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&display=swap');
-:root{--spring:cubic-bezier(.34,1.56,.64,1);--soft:cubic-bezier(.2,.8,.2,1);--ink-line:#172823;--sticker:2.5px solid var(--ink-line);--display:'Big Shoulders Display','Space Grotesk',sans-serif;--pop-1:#d8f073;--pop-2:#ff9968;--pop-3:#a9dbe8;--pop-4:#c2b0e0}
+:root{--spring:cubic-bezier(.34,1.56,.64,1);--soft:cubic-bezier(.2,.8,.2,1);--ink-line:#172823;--display:'Big Shoulders Display','Space Grotesk',sans-serif;--accent:#e2733f;--accent-soft:#fbe6d8;--surface:#fffdf9;--surface-2:#f6f3ec;--line:rgba(23,40,35,.09);--r-lg:22px;--r-md:14px;--shadow-1:0 1px 2px rgba(23,40,35,.05),0 10px 30px -18px rgba(23,40,35,.28);--shadow-2:0 2px 4px rgba(23,40,35,.06),0 22px 44px -22px rgba(23,40,35,.35);--pop-1:#d8f073;--pop-2:#ff9968;--pop-3:#a9dbe8;--pop-4:#c2b0e0;--sticker:1px solid var(--line)}
 
 /* Headlines: tall, condensed, with an offset citrus shadow */
-.pond-heading h1,.page-head h1,.profile-hero h1,.arena-hero h1,.map-hero h1{font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:.92;color:var(--ink-line);text-shadow:none}
+/* Headlines: display face only for the hero; page titles in calm sentence case */
+.pond-heading h1{font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:.92}
+.page-head h1,.profile-hero h1,.arena-hero h1,.map-hero h1{font-family:'Space Grotesk',sans-serif;font-weight:700;text-transform:none;letter-spacing:-.035em;line-height:1.02;color:var(--ink-line);text-shadow:none}
 .section-kicker{color:#c35d2a;letter-spacing:.2em}
 
 /* Sticker cards: thick outline, solid offset shadow, colour rotates per card */
-.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card{--pop:var(--pop-1);border:var(--sticker)!important;border-radius:16px;box-shadow:6px 6px 0 var(--pop)!important;transition:transform .4s var(--spring),box-shadow .4s var(--spring)}
-:is(.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card):nth-child(4n+2){--pop:var(--pop-2)}
-:is(.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card):nth-child(4n+3){--pop:var(--pop-3)}
-:is(.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card):nth-child(4n+4){--pop:var(--pop-4)}
-:is(.behavior-card,.feed-card,.challenge-tile,.place-card,.resident-card):hover,:is(.behavior-card,.feed-card,.challenge-tile):focus-within{transform:translate(-3px,-3px) rotate(-.4deg);box-shadow:10px 10px 0 var(--pop)!important}
-.behavior-art{border-bottom:var(--sticker)}
+/* Cards: one surface style everywhere */
+.behavior-card,.feed-card,.challenge-tile,.side-card,.place-card,.stat-card,.resident-card,.settings-card,.safety-card,.scene-card{border:1px solid var(--line)!important;border-radius:var(--r-lg);background-color:var(--surface);box-shadow:var(--shadow-1)!important;transition:transform .4s var(--spring),box-shadow .35s var(--soft)}
+
+
+
+:is(.behavior-card,.feed-card,.challenge-tile,.place-card,.resident-card):hover,:is(.behavior-card,.feed-card,.challenge-tile):focus-within{transform:translateY(-3px);box-shadow:var(--shadow-2)!important}
+.behavior-art{border-bottom:1px solid var(--line)}
 
 /* Hero stage: dark spotlight with soft sunburst rays behind the robot */
-.featured-moment{border:var(--sticker);box-shadow:8px 8px 0 var(--pop-1);border-radius:20px}
+.featured-moment{border:1px solid var(--line);box-shadow:var(--shadow-1);border-radius:var(--r-lg)}
 .featured-stage{isolation:isolate;overflow:clip}
 .featured-stage:before{content:'';position:absolute;inset:-20%;z-index:-1;pointer-events:none;background:repeating-conic-gradient(from 0deg at 50% 62%,rgba(216,240,115,.09) 0 6deg,transparent 6deg 18deg);animation:sunburst 60s linear infinite;mask:radial-gradient(circle at 50% 62%,#000 10%,transparent 60%);-webkit-mask:radial-gradient(circle at 50% 62%,#000 10%,transparent 60%)}
 @keyframes sunburst{to{transform:rotate(360deg)}}
@@ -25,19 +28,21 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 @keyframes wake-pulse{50%{opacity:.35}}
 
 /* Buttons: chunky, pressable */
-.button,.play-button{border:var(--sticker)!important;box-shadow:4px 4px 0 var(--ink-line);transition:transform .25s var(--spring),box-shadow .25s var(--spring)}
-.button:hover,.play-button:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink-line)}
-.button:active,.play-button:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink-line)}
+.button,.play-button{border-radius:999px;box-shadow:none!important;transition:transform .25s var(--spring),background .2s,border-color .2s}
+.button-dark{border:0!important;background:var(--ink-line)!important;color:#fff!important}
+.button-outline{border:1px solid rgba(23,40,35,.18)!important;background:var(--surface)!important}
+.button:hover,.play-button:hover{transform:translateY(-1px)}
+.button:active,.play-button:active{transform:scale(.97)}
 .filter-chip,.date-chip,.text-button{transition:transform .3s var(--spring)}
 .filter-chip:active,.date-chip:active,.text-button:active{transform:scale(.94)}
 
-/* Shell colour picker: square sticker swatches */
-.robot-shell-controls button{border-radius:5px;width:22px;height:22px;border:2px solid #0f1f1b;box-shadow:3px 3px 0 rgba(15,31,27,.65);transition:transform .3s var(--spring)}
+/* Shell colour picker */
+.robot-shell-controls button{border-radius:50%;width:24px;height:24px;border:2px solid rgba(255,255,255,.45);transition:transform .3s var(--spring)}
 .robot-shell-controls button:hover{transform:translate(-1px,-1px) rotate(-6deg)}
-.robot-shell-controls button[aria-pressed="true"]{transform:translate(-2px,-2px) scale(1.1);box-shadow:3px 3px 0 var(--pop-1)}
+.robot-shell-controls button[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 
 /* Launch ribbon: tilted, loud ticker */
-.launch-ribbon{transform:rotate(-1deg);background:var(--pop-1);border-block:var(--sticker);color:var(--ink-line);margin-block:4px}
+.launch-ribbon{transform:none;background:var(--ink-line);color:#f3efe2;border:0;margin:0}
 .launch-ribbon b{color:#c35d2a}
 
 /* Brand mark bobs like a duck on water */
@@ -49,7 +54,7 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 /* Navigation: citrus pill with a springy nudge */
 .nav-item{transition:background .25s var(--soft),color .25s,transform .35s var(--spring)}
 .nav-item:hover{transform:translateX(4px);color:#fff}
-.nav-item.active{background:var(--pop-1);color:var(--forest);border-color:var(--ink-line);box-shadow:3px 3px 0 rgba(0,0,0,.35)}
+.nav-item.active{background:rgba(255,255,255,.1);color:#fff;border-color:transparent;box-shadow:inset 3px 0 0 var(--pop-1)}
 .nav-item .nav-glyph{transition:transform .4s var(--spring)}
 .nav-item:hover .nav-glyph,.nav-item.active .nav-glyph{transform:scale(1.18) rotate(-8deg)}
 .mobile-nav button{transition:transform .35s var(--spring)}
@@ -64,15 +69,15 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 
 /* Workshop: train â†’ try â†’ tune â†’ share strip */
 .learn-strip{list-style:none;padding:0;margin:0 0 22px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.learn-strip li{--pop:var(--pop-1);background:var(--paper);border:var(--sticker);border-radius:14px;padding:14px 15px;box-shadow:5px 5px 0 var(--pop);display:grid;gap:3px;transition:transform .4s var(--spring)}
-.learn-strip li:nth-child(2){--pop:var(--pop-2)}.learn-strip li:nth-child(3){--pop:var(--pop-3)}.learn-strip li:nth-child(4){--pop:var(--pop-4)}
+.learn-strip li{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-1);display:grid;gap:4px;transition:transform .4s var(--spring)}
+
 .learn-strip li:hover{transform:translate(-2px,-2px) rotate(-.6deg)}
-.learn-strip b{font:900 26px/1 var(--display);color:#c35d2a}
+.learn-strip b{font:700 13px 'Space Grotesk';letter-spacing:.08em;color:#a8481f}
 .learn-strip strong{font:700 14px 'Space Grotesk';color:var(--ink)}
 .learn-strip span{font-size:11.5px;color:var(--muted);line-height:1.45}
 @media(max-width:900px){.learn-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.learn-strip{grid-template-columns:1fr}}
-.nav-item.active .nav-key{color:#2c4a3d}
+.nav-item.active .nav-key{color:#d6e5cf}
 .learn-strip span{color:#4f5f58}
 /* Accent line: one solid colour, no gradient fill or stacked shadows, so the headline reads cleanly */
 :is(.pond-heading,.page-head,.profile-hero,.arena-hero,.map-hero) h1 :is(span,em){font-style:normal;color:#c35d2a;background:none;-webkit-text-fill-color:currentColor;text-shadow:none}
@@ -83,9 +88,6 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 /* Motion modes: Real walk / Battle, replacing the single battle toggle */
 .robot-mode-controls{position:absolute;z-index:4;right:26px;bottom:111px;display:flex;gap:6px}
 .robot-mode-controls[hidden]{display:none}
-.robot-mode-controls button{display:flex;align-items:center;gap:5px;padding:6px 10px;border:2px solid #0f1f1b;border-radius:8px;background:#e1edcf;color:#173a33;font:800 9px 'Space Grotesk';letter-spacing:.08em;text-transform:uppercase;box-shadow:3px 3px 0 rgba(15,31,27,.6);transition:transform .25s var(--spring),background .2s,box-shadow .25s var(--spring)}
-.robot-mode-controls button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(15,31,27,.6)}
-.robot-mode-controls button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(15,31,27,.6)}
 .robot-mode-controls button[aria-pressed="true"]{background:var(--pop-1)}
 .robot-mode-controls button[data-mode="battle"][aria-pressed="true"]{background:var(--pop-2);color:#1c120b}
 .robot-mode-controls button:disabled{opacity:.5;cursor:not-allowed}
@@ -109,7 +111,7 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 }
 /* Phones: stack the Pond side cards; two 167px columns cramped text and collided button shadows */
 @media(max-width:600px){.rail{grid-template-columns:1fr}.robot-card p,.robot-card small{font-size:11px}}
-/* Stacked sticker buttons need room for their offset shadows */
+/* Stacked buttons need a little room */
 .robot-card .button+.button{margin-top:10px}
 /* Orbiting the hero robot shouldn't select the stage's labels */
 .featured-stage{-webkit-user-select:none;user-select:none}
