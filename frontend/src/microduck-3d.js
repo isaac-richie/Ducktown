@@ -32,7 +32,7 @@ const MODES = {
 const FOLLOW = .65;
 // The hero sits further back and a little higher, so the duck reads as a small robot in a big city.
 const PITCH = {min:-1.35, max:1.42, rest:.06};
-const HERO_RADIUS = 96, HERO_RADIUS_NARROW = 74, CARD_RADIUS = 58.9, CARD_PITCH = .177;
+const HERO_RADIUS = 96, HERO_RADIUS_NARROW = 60, CARD_RADIUS = 58.9, CARD_PITCH = .177;
 // Phones and small screens get a lighter city photo. The robot is always full detail: the
 // simplified build faceted its curved shells and looked broken on phones.
 const LITE = matchMedia('(pointer:coarse),(max-width:760px)').matches;
@@ -479,8 +479,21 @@ class MicroduckView extends HTMLElement {
       shellControls.append(button);
     }
     this.variantControls=shellControls;dock.append(shellControls,camera);this.cameraControl=camera;
+    // Phones: one slim row of modes; clips, music, colours and camera open in a sheet above it.
+    // On wider screens the wrapper is display:contents, so the dock looks the same as before.
+    const extras=document.createElement('div');extras.className='robot-extras';extras.id=`robot-extras-${Math.random().toString(36).slice(2,8)}`;
+    extras.append(clips,disco,styles,shellControls,camera);dock.append(extras);
+    const more=document.createElement('button');more.type='button';more.className='robot-more';
+    more.setAttribute('aria-controls',extras.id);more.setAttribute('aria-expanded','false');more.setAttribute('aria-label','More robot controls');
+    more.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg>';
+    more.addEventListener('click',()=>this.setExtras(more.getAttribute('aria-expanded')!=='true'));
+    modes.append(more);this.moreButton=more;this.extras=extras;
     const status=document.createElement('span');status.className='robot-render-label';
     this.status=status;this.parentElement.append(status);this.updateStatus();
+  }
+  setExtras(open){
+    this.moreButton?.setAttribute('aria-expanded',String(open));
+    this.extras?.classList.toggle('is-open',open);this.dirty=true;wake();
   }
   setVariant(variant){
     if(this.variant===variant || !PALETTES[variant])return;
@@ -510,9 +523,9 @@ class MicroduckView extends HTMLElement {
     if(this.dock)this.dock.hidden=!webgl;
     if(this.modeControls){
       this.modeControls.hidden=!webgl;
-      for(const button of this.modeControls.children)button.disabled=!motionEnabled();
+      for(const button of this.modeControls.querySelectorAll('[data-mode]'))button.disabled=!motionEnabled();
     }
-    if(this.status && this.status.textContent!==label)this.status.textContent=label;
+    if(this.status && this.status.textContent!==label){this.status.textContent=label;this.status.classList.remove('is-fresh');void this.status.offsetWidth;this.status.classList.add('is-fresh');}
     if(this.variantControls && this.variantControls.hidden===webgl)this.variantControls.hidden=!webgl;
   }
   orbitTo(yaw,pitch){
@@ -526,7 +539,7 @@ class MicroduckView extends HTMLElement {
     // Switching off away from home, the duck walks the rest of its lap back instead of sliding.
     this.returning=mode==='idle' && toHome(this.pathAngle)>.02 && motionEnabled();
     this.mode=mode;
-    for(const button of this.modeControls?.children||[])button.setAttribute('aria-pressed',String(button.dataset.mode===mode));
+    for(const button of this.modeControls?.querySelectorAll('[data-mode]')||[])button.setAttribute('aria-pressed',String(button.dataset.mode===mode));
     this.closest('.featured-stage')?.classList.toggle('is-battle',mode==='battle');
     this.closest('.featured-stage')?.classList.toggle('is-walk',mode==='walk'||mode==='policy');
     if(this.clipControls)this.clipControls.hidden=mode!=='policy';
@@ -534,6 +547,7 @@ class MicroduckView extends HTMLElement {
     if(this.styleControls)this.styleControls.hidden=mode!=='disco';
     if(mode==='disco'){if(!this.discoAudio?.playing)this.startDisco();}
     else this.discoAudio?.stop();
+    this.setExtras(false);
     if(mode==='policy')this.playClip(this.clipName||'kick_right');
     else if(this.policyRobot && !this.exact){this.policyRobot.root.visible=false;this.robot.visible=true;}
     this.updateStatus();this.dirty=true;wake();
@@ -873,7 +887,7 @@ class MicroduckView extends HTMLElement {
     // (left) by framing it in the right part of the stage.
     const scale=h/bounds.height,wide=bounds.width>=600&&bounds.width/bounds.height>.9;
     // Phones: the headline fills the top of the stage, so the duck stands in the lower half.
-    const top=this.isHero?bounds.height*(wide?.06:.42)*scale:0,bottom=this.isHero?(wide?96:150)*scale:0,frameH=this.isHero?h-top-bottom:h;
+    const top=this.isHero?bounds.height*(wide?.06:.3)*scale:0,sheet=!wide&&this.extras?.classList.contains('is-open')?this.extras.offsetHeight+10:0,bottom=this.isHero?(wide?96:84+(this.sheetLift=(this.sheetLift||0)+(sheet-(this.sheetLift||0))*(motionEnabled()?.2:1)))*scale:0,frameH=this.isHero?h-top-bottom:h;
     this.camera.aspect=w/frameH;
     if(this.isHero)this.camera.setViewOffset(w,frameH,wide?-w*.2:0,-top,w,h);
     // Fit the full robot even in narrow containers; cards keep a roomy studio crop.
