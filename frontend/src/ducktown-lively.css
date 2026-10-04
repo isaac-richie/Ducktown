@@ -393,3 +393,31 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 @media(max-width:900px){.featured-below .featured-story{display:block}.featured-below .featured-capabilities{margin:18px 0}}
 /* Profile banner: light heading on the dark green card (it was dark-on-dark). */
 .profile-hero .profile-copy h1{color:#fff}
+
+/* Arena: line icons instead of emoji, readable text, lighter buttons */
+.ui-glyph{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.arena-hero .arena-art{display:grid;place-items:center;width:clamp(120px,14vw,180px);height:clamp(120px,14vw,180px);font-size:0;color:#c2552a;
+  border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),rgba(255,255,255,.35));box-shadow:0 20px 50px -20px rgba(194,85,42,.45),inset 0 0 0 1px rgba(255,255,255,.7);padding:clamp(28px,3.4vw,42px);animation:none}
+.challenge-grid .challenge-tile{padding:24px;display:flex;flex-direction:column;gap:6px}
+.challenge-tile:before,.challenge-tile:after{display:none!important}
+.challenge-icon{display:grid;place-items:center;width:44px;height:44px;padding:10px;border-radius:14px;background:#fdf1ea;color:#c2552a;margin-bottom:8px}
+.challenge-level{font-size:12px;font-weight:700;color:#8a978c}
+.challenge-tile h3{font-size:19px;letter-spacing:-.01em;margin:0;color:#1f3328}
+.challenge-tile p{font-size:14px;line-height:1.55;color:#5f7064;margin:2px 0 0}
+.challenge-tile .challenge-foot{margin-top:auto;padding-top:16px;display:flex;align-items:center;justify-content:space-between}
+.challenge-tile .challenge-foot>span{font-size:12px;color:#9aa69c;text-transform:none;letter-spacing:0}
+.button.challenge-save{background:#fff;color:#1f3328;border:1px solid #dfe6dc;box-shadow:none;padding:9px 16px;font-size:13px}
+.button.challenge-save:hover{border-color:#e2733f;color:#a8481f}
+.button.challenge-save.is-saved{background:#fdf1ea;border-color:#f0c3a8;color:#a8481f}
+.leaderboard p{font-size:14px;line-height:1.55}
+
+/* Human Perch: cards sized to their content; readable rows */
+.perch-grid{align-items:start}
+.settings-card,.info-panel{padding:26px}
+.settings-card p,.info-panel p,.setting-row small{font-size:14px;line-height:1.55}
+.setting-row strong,.info-row span,.info-row strong{font-size:14px}
+.approval-item{font-size:13px}
+
+/* Pond: tighter spacing now the repeated sections are gone */
+.featured-below{margin-bottom:28px}
+.featured-below .featured-story{padding:36px 40px}
