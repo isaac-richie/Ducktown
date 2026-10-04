@@ -629,6 +629,9 @@ class MicroduckView extends HTMLElement {
       const clip=await replay.loadClip(name);
       if(this.clipName!==name || !this.scene)return;
       this.replay=replay;this.clip=clip;this.clipTime=0;
+      // The kicked ball rolls ~1.5 m straight ahead, i.e. at a front camera. Swing round to a
+      // side angle so it rolls across the frame instead of into the lens.
+      if(name==='kick_right' && Math.abs(Math.sin(this.targetYaw))<.75)this.orbitTo(this.targetYaw+wrapAngle(1.15-this.targetYaw),this.targetPitch);
       this.clipNote=replay.POLICY_CLIPS.find(c=>c.id===name).note;
       const on=this.mode==='policy'||!!this.exact;
       this.policyRobot.root.visible=on;this.robot.visible=!on;
@@ -868,6 +871,13 @@ class MicroduckView extends HTMLElement {
         else this.clipTime=0;
       }
       this.replay.applyClip(this.policyRobot,this.clip,Math.min(this.clipTime,this.clip.duration));
+      // Whatever the view, fade the ball out as it nears the camera rather than filling the screen.
+      const ball=this.policyRobot.bodies.get('ball');
+      if(ball.visible){
+        ball.getWorldPosition(this.ballWorld??=new THREE.Vector3());
+        const fade=Math.min(1,Math.max(0,(this.camera.position.distanceTo(this.ballWorld)-14)/16));
+        ball.material.transparent=fade<1;ball.material.opacity=fade;ball.visible=fade>0;
+      }
     }
     const [px,pz]=replaying?this.replay.clipTrunk(this.clip,Math.min(this.clipTime,this.clip.duration)).map(v=>v*FOLLOW):this.pathPoint().map(v=>v*FOLLOW),follow=motionEnabled()?1-Math.exp(-dt*4):1;
     this.focus.x+=(px-this.focus.x)*follow;this.focus.z+=(pz-this.focus.z)*follow;
