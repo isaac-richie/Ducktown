@@ -384,3 +384,12 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 }
 @keyframes caption-flash{0%{opacity:0}8%,75%{opacity:1}100%{opacity:0}}
 @media(max-width:760px){.hero-cinematic .featured-stage{height:max(470px,calc(100svh - 168px))}}
+
+/* The 3D duck moved up into the hero, so this card is one column now (it left an empty half). */
+.featured-moment.featured-below{grid-template-columns:1fr;min-height:0}
+.featured-below .featured-story{min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:48px;align-items:start}
+.featured-below .featured-story>:not(.featured-capabilities){grid-column:1}
+.featured-below .featured-capabilities{grid-column:2;grid-row:1 / span 6;align-self:center;margin:0}
+@media(max-width:900px){.featured-below .featured-story{display:block}.featured-below .featured-capabilities{margin:18px 0}}
+/* Profile banner: light heading on the dark green card (it was dark-on-dark). */
+.profile-hero .profile-copy h1{color:#fff}
