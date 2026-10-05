@@ -1,5 +1,6 @@
 import { bindPointerGlow, finishEntrance, playEntrance } from './motion-system.js';
 import microduckHeadMark from './microduck-head-mark-open.webp';
+import { mountSkillStore } from './skill-store.js';
 
 (() => {
   const STORE_KEY = 'ducktown-ui-v1';
@@ -287,6 +288,7 @@ import microduckHeadMark from './microduck-head-mark-open.webp';
     if(staticPreview&&state.view==='workshop')viewEl.querySelector('.page-sub').textContent='Explore playful Microduck ideas. Live simulator checks will come later.';
     if(state.view==='perch'){viewEl.insertAdjacentHTML('beforeend',renderReceiptPanel());if(state.backendAvailable)viewEl.insertAdjacentHTML('beforeend',renderSdkPanel());if(state.authUser)viewEl.insertAdjacentHTML('beforeend',renderAccountPanel());}
     if(state.view==='workshop')viewEl.querySelector('.page-head')?.insertAdjacentHTML('afterend',renderInstalledPanel());
+    if(state.view==='workshop'){viewEl.querySelector('.page-head')?.insertAdjacentHTML('afterend','<section class="skill-store" id="skill-store" aria-label="Skill Store"></section>');mountSkillStore(viewEl.querySelector('#skill-store'),{openModal,mark:microduckHeadMark});}
     document.querySelector('#breadcrumb-current').textContent=names[state.view];
     const accountChip=document.querySelector('.user-chip');
     accountChip.dataset.view=state.authUser?'perch':'profile';
