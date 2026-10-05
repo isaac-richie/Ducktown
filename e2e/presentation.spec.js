@@ -6,6 +6,9 @@ test('robot controls preserve appearance, pause motion, and honor reduced motion
   await page.goto('/#pond');
   const robot=page.locator('.featured-stage microduck-view');
   await expect(robot).toHaveAttribute('data-renderer','webgl',{timeout:20000});
+  // Phones keep colours and camera views in a sheet behind the ⋯ button.
+  const more=page.getByRole('button',{name:'More robot controls'});
+  if(await more.isVisible())await more.click();
   await page.getByRole('button',{name:'Sky shell',exact:true}).click();
   await expect(robot).toHaveAttribute('data-variant','sky');
   await page.getByRole('button',{name:'Camera views',exact:true}).click();

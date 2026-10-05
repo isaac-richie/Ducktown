@@ -6,7 +6,7 @@ test('guest can browse Pond and Workshop without overflow or browser errors',asy
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/#pond');
   await expect(page.getByRole('heading',{name:'Small robots. Remarkable stories.'})).toBeVisible();
-  await expect(page.getByText(/\d+ community updates/)).toBeVisible();
+  await expect(page.getByRole('heading',{name:/From the flock/})).toBeVisible();
   await page.locator('[data-view="workshop"]:visible').first().click();
   await expect(page.getByRole('heading',{name:'Teach a duck something new.'})).toBeVisible();
   await page.getByRole('button',{name:'Sign in to look'}).click();

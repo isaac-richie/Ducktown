@@ -259,39 +259,39 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .search-shell svg{width:20px;height:20px;flex:none;fill:none;stroke:#7d8c80;stroke-width:2;stroke-linecap:round}
 .search-shell input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:17px;padding:12px 0;color:#1f3328}
 .search-shell input::-webkit-search-cancel-button{display:none}
-.search-shell kbd{font:600 10px/1 inherit;color:#8a978c;border:1px solid #e1e7de;border-radius:6px;padding:5px 7px;background:#f7f9f5}
+.search-shell kbd{font:600 10px/1 inherit;color:#5c6b60;border:1px solid #e1e7de;border-radius:6px;padding:5px 7px;background:#f7f9f5}
 .search-suggest{display:flex;gap:6px;flex-wrap:wrap;padding:12px 8px 4px}
 .search-suggest button{border:1px solid #e3e9df;background:#fff;color:#4a6151;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:650;transition:background .15s,border-color .15s}
 .search-suggest button:hover{background:#fdf1ea;border-color:#f0c3a8;color:#a8481f}
 .search-results{overflow:auto;padding:4px 2px 4px}
 .search-group{padding:8px 0 2px}
-.search-label{font:800 10px/1 inherit;letter-spacing:.08em;text-transform:uppercase;color:#8a978c;padding:8px 10px}
+.search-label{font:800 10px/1 inherit;letter-spacing:.08em;text-transform:uppercase;color:#5c6b60;padding:8px 10px}
 .search-row{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;text-align:left;padding:10px;border-radius:14px;transition:background .12s}
 .search-row:hover,.search-row:focus-visible{background:#f4f6f1;outline:0}
 .search-icon{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:12px;background:#f1f4ee;font-size:16px;font-weight:800;color:#3d5a46}
 .search-text{flex:1;min-width:0}
 .search-text strong{display:block;font-size:14px;color:#1f3328}
-.search-text small{display:block;font-size:12px;color:#8a978c;margin-top:2px}
+.search-text small{display:block;font-size:12px;color:#5c6b60;margin-top:2px}
 .search-go{color:#c0c9bf;transition:transform .15s,color .15s}
 .search-row:hover .search-go{color:#e2733f;transform:translateX(3px)}
 .search-empty{padding:30px 12px;text-align:center}
 .search-empty strong{display:block;font-size:14px;color:#2f4636}
-.search-empty span{font-size:12px;color:#8a978c}
+.search-empty span{font-size:12px;color:#5c6b60}
 
 .modal.modal-auth{width:min(420px,calc(100vw - 24px));padding:30px 28px 24px;border-radius:26px}
 .auth-brand{display:flex;align-items:center;gap:10px;font:800 11px/1 inherit;letter-spacing:.14em;color:#3d5a46}
 .auth-brand img{width:40px;height:40px;border-radius:12px;background:#f3efe6;object-fit:contain}
 .auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin:22px 0 18px;border-radius:14px;background:#f1f4ee}
-.auth-tabs button{border:0;background:none;border-radius:10px;padding:9px;font-size:13px;font-weight:700;color:#6c7d70;transition:background .15s,color .15s,box-shadow .15s}
+.auth-tabs button{border:0;background:none;border-radius:10px;padding:9px;font-size:13px;font-weight:700;color:#5c6b60;transition:background .15s,color .15s,box-shadow .15s}
 .auth-tabs button.active{background:#fff;color:#1f3328;box-shadow:0 1px 3px rgba(20,40,28,.12)}
 .modal-auth h2{font-size:26px;letter-spacing:-.02em;margin:0 0 6px}
-.modal-auth .auth-lead{font-size:13px;color:#6c7d70;margin:0 0 20px}
+.modal-auth .auth-lead{font-size:13px;color:#5c6b60;margin:0 0 20px}
 .auth-form{display:grid;gap:14px}
 .auth-field label{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#3d5a46;margin-bottom:6px}
-.auth-field label small{font-weight:500;color:#8a978c}
+.auth-field label small{font-weight:500;color:#5c6b60}
 .auth-input{display:flex;align-items:center;gap:8px;border:1px solid #dfe6dc;border-radius:14px;background:#fff;padding:0 6px 0 14px;transition:border-color .15s,box-shadow .15s}
 .auth-input:focus-within{border-color:#e2733f;box-shadow:0 0 0 4px rgba(226,115,63,.14)}
-.auth-input i{font-style:normal;color:#9aa69c;font-weight:700}
+.auth-input i{font-style:normal;color:#5c6b60;font-weight:700}
 .auth-input input{flex:1;min-width:0;border:0;outline:0;background:none;padding:13px 0;font-size:15px;color:#1f3328}
 .auth-reveal{border:0;background:#f1f4ee;color:#4a6151;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700}
 .auth-error{margin:0;min-height:0;font-size:12px;color:#b4442a}
@@ -317,23 +317,23 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .pond-welcome{text-align:center;padding:40px 28px;border-radius:var(--r-lg,22px)}
 .pond-welcome img{width:64px;height:64px;border-radius:18px;background:#f3efe6;object-fit:contain;margin-bottom:14px}
 .pond-welcome h3{font-size:21px;letter-spacing:-.01em;margin:0 0 8px;color:#1f3328}
-.pond-welcome p{font-size:14px;color:#6c7d70;max-width:420px;margin:0 auto 18px;line-height:1.6}
+.pond-welcome p{font-size:14px;color:#5c6b60;max-width:420px;margin:0 auto 18px;line-height:1.6}
 
 /* Conversation thread */
 .modal.modal-thread{width:min(560px,calc(100vw - 24px));padding:0;display:flex;flex-direction:column;max-height:min(86vh,760px);overflow:hidden;border-radius:26px}
 .modal-thread .modal-close{top:16px;right:16px}
 .thread-head{display:flex;align-items:center;gap:11px;padding:20px 60px 0 22px}
 .thread-head strong{display:block;font-size:14px;color:#1f3328}
-.thread-head small{font-size:12px;color:#8a978c}
+.thread-head small{font-size:12px;color:#5c6b60}
 .thread-post{padding:12px 22px 16px;font-size:15px;line-height:1.6;color:#22362b;border-bottom:1px solid #edf1ea}
-.thread-count{padding:14px 22px 4px;font-size:12px;font-weight:800;color:#8a978c}
+.thread-count{padding:14px 22px 4px;font-size:12px;font-weight:800;color:#5c6b60}
 .thread-list{flex:1;overflow:auto;padding:4px 14px 12px;min-height:90px}
 .reply-item{display:flex;gap:10px;padding:10px 8px;border-radius:14px;animation:fadein .2s}
 .reply-item .mini-avatar{width:32px;height:32px;flex:none;font-size:12px}
 .reply-body{flex:1;min-width:0}
 .reply-meta{display:flex;align-items:center;gap:6px}
 .reply-meta strong{font-size:13px;color:#1f3328}
-.reply-meta small{font-size:12px;color:#9aa69c}
+.reply-meta small{font-size:12px;color:#5c6b60}
 .reply-meta small:before{content:'Â·';margin-right:6px}
 .reply-body p{margin:4px 0 0;padding:9px 13px;border-radius:4px 16px 16px 16px;background:#f2f5ef;font-size:14px;line-height:1.5;color:#22362b;display:inline-block;max-width:100%;overflow-wrap:anywhere}
 .reply-item.is-mine .reply-body p{background:#fdf1ea}
@@ -342,7 +342,7 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 @media(pointer:coarse){.reply-report{opacity:1}}
 .thread-empty{padding:26px 0;text-align:center}
 .thread-empty strong{display:block;font-size:14px;color:#2f4636}
-.thread-empty span{font-size:12px;color:#8a978c}
+.thread-empty span{font-size:12px;color:#5c6b60}
 .thread-skeleton{display:grid;gap:10px;padding:10px 8px}
 .thread-skeleton i{height:44px;border-radius:14px;background:linear-gradient(90deg,#f1f4ee,#e8ede5,#f1f4ee);background-size:200% 100%;animation:shimmer 1.2s infinite linear}
 @keyframes shimmer{to{background-position:-200% 0}}
@@ -401,11 +401,11 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .challenge-grid .challenge-tile{padding:24px;display:flex;flex-direction:column;gap:6px}
 .challenge-tile:before,.challenge-tile:after{display:none!important}
 .challenge-icon{display:grid;place-items:center;width:44px;height:44px;padding:10px;border-radius:14px;background:#fdf1ea;color:#c2552a;margin-bottom:8px}
-.challenge-level{font-size:12px;font-weight:700;color:#8a978c}
+.challenge-level{font-size:12px;font-weight:700;color:#5c6b60}
 .challenge-tile h3{font-size:19px;letter-spacing:-.01em;margin:0;color:#1f3328}
 .challenge-tile p{font-size:14px;line-height:1.55;color:#5f7064;margin:2px 0 0}
 .challenge-tile .challenge-foot{margin-top:auto;padding-top:16px;display:flex;align-items:center;justify-content:space-between}
-.challenge-tile .challenge-foot>span{font-size:12px;color:#9aa69c;text-transform:none;letter-spacing:0}
+.challenge-tile .challenge-foot>span{font-size:12px;color:#5c6b60;text-transform:none;letter-spacing:0}
 .button.challenge-save{background:#fff;color:#1f3328;border:1px solid #dfe6dc;box-shadow:none;padding:9px 16px;font-size:13px}
 .button.challenge-save:hover{border-color:#e2733f;color:#a8481f}
 .button.challenge-save.is-saved{background:#fdf1ea;border-color:#f0c3a8;color:#a8481f}
@@ -433,7 +433,7 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .store-numbers{display:flex;gap:8px}
 .store-numbers div{min-width:84px;padding:10px 14px;border-radius:16px;background:#fff;border:1px solid #e6ece3;text-align:center}
 .store-numbers strong{display:block;font-size:22px;letter-spacing:-.02em;color:#1f3328}
-.store-numbers span{font-size:12px;color:#8a978c}
+.store-numbers span{font-size:12px;color:#5c6b60}
 .store-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 .store-search{flex:1 1 240px;display:flex;align-items:center;gap:9px;padding:0 14px;border-radius:14px;background:#fff;border:1px solid #dfe6dc;transition:border-color .15s,box-shadow .15s}
 .store-search:focus-within{border-color:#e2733f;box-shadow:0 0 0 4px rgba(226,115,63,.14)}
@@ -457,9 +457,9 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .store-body{padding:13px 15px 14px}
 .store-body h3{margin:0;font-size:16px;letter-spacing:-.01em}
 .store-body h3 button{border:0;background:none;padding:0;font:inherit;color:#1f3328;text-align:left;cursor:pointer}
-.store-by{margin:3px 0 10px;font-size:12px;color:#8a978c}
+.store-by{margin:3px 0 10px;font-size:12px;color:#5c6b60}
 .store-by a{color:#4a6151;text-decoration:none;font-weight:700}
-.store-stats{display:flex;gap:14px;font-size:12px;font-weight:700;color:#6c7d70}
+.store-stats{display:flex;gap:14px;font-size:12px;font-weight:700;color:#5c6b60}
 .store-stats span{display:inline-flex;align-items:center;gap:4px}
 .store-stats svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .store-card.is-skeleton{animation:none}
@@ -467,12 +467,12 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .store-card.is-skeleton i{display:block;height:12px;border-radius:6px;margin:6px 0}
 .store-card.is-skeleton i+i{width:60%}
 .store-more{display:flex;align-items:center;gap:8px;margin:20px auto 0;border:1px solid #dfe6dc;background:#fff;border-radius:999px;padding:11px 20px;font-size:14px;font-weight:700;color:#1f3328}
-.store-more span{color:#8a978c;font-weight:600}
+.store-more span{color:#5c6b60;font-weight:600}
 .store-more:hover{border-color:#e2733f}
 .store-empty{padding:40px;text-align:center;border:1px dashed #d6dfd3;border-radius:20px}
 .store-empty strong{display:block;color:#2f4636}
-.store-empty span{font-size:13px;color:#8a978c}
-.store-note{font-size:12px;color:#8a978c;line-height:1.55;margin:16px 0 0}
+.store-empty span{font-size:13px;color:#5c6b60}
+.store-note{font-size:12px;color:#5c6b60;line-height:1.55;margin:16px 0 0}
 .store-note a{color:#4a6151}
 /* Skill detail sheet */
 .modal.modal-skill{width:min(940px,calc(100vw - 24px));padding:0;overflow:hidden;border-radius:26px}
@@ -481,19 +481,19 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .skill-media video,.skill-media img{width:100%;height:100%;max-height:min(88vh,760px);object-fit:contain}
 .skill-info{padding:30px 28px 24px;overflow:auto}
 .skill-top{display:flex;align-items:center;gap:8px;font-size:12px;padding-right:36px}
-.skill-top a{color:#6c7d70;text-decoration:none;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skill-top a{color:#5c6b60;text-decoration:none;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .modal-skill h2{font-size:30px;letter-spacing:-.025em;margin:10px 0 8px}
 .skill-desc{font-size:14px!important;line-height:1.6!important;color:#4a5d50!important}
 .skill-facts{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;margin:16px 0}
 .skill-facts div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid #edf1ea;font-size:13px}
-.skill-facts dt{color:#8a978c}
+.skill-facts dt{color:#5c6b60}
 .skill-facts dd{margin:0;color:#1f3328;font-weight:700;text-align:right}
 .skill-install{padding:14px;border-radius:16px;background:#f4f6f1}
 .skill-install>span{font-size:12px;font-weight:800;color:#3d5a46}
 .skill-cmd{display:flex;align-items:center;gap:8px;margin:8px 0;padding:6px 6px 6px 12px;border-radius:12px;background:#1a211e}
 .skill-cmd code{flex:1;min-width:0;color:#e8f0e4;font-size:12px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
 .skill-cmd button{border:0;border-radius:9px;background:#e2733f;color:#fff;font-size:12px;font-weight:800;padding:7px 12px;flex:none}
-.skill-install small{display:block;font-size:12px;color:#6c7d70;line-height:1.55}
+.skill-install small{display:block;font-size:12px;color:#5c6b60;line-height:1.55}
 .skill-install small code{background:#e8ede5;border-radius:5px;padding:1px 5px;font-size:11px}
 .skill-warning{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:#fdf1ea;color:#8a3d1b!important;font-size:13px!important;line-height:1.5!important}
 @media(max-width:760px){
@@ -522,3 +522,14 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
 .store-media .store-art{position:absolute;inset:0}
 .store-media .store-thumb{position:absolute;inset:0;opacity:0;transition:opacity .4s}
 .store-media .store-thumb.is-in{opacity:1}
+/* Contrast: muted text stays at least 4.5:1 on every card background */
+.concept-divider>p,.setting-row small,.perch-note{color:#5c6b60}
+/* Phones: colours and camera share the sheet's last row instead of overlapping */
+@media(max-width:760px){
+  .robot-extras{flex-direction:row;flex-wrap:wrap;justify-content:center;column-gap:14px}
+  .robot-extras>:is(.robot-clip-controls,.robot-disco-controls,.robot-dance-styles){flex:1 1 100%!important}
+  .robot-extras>.robot-shell-controls{order:9}
+  .robot-extras>.robot-camera{position:relative!important;right:auto;bottom:auto;order:10}
+  .robot-extras>.robot-camera .robot-angle-controls{left:auto!important;right:0!important;transform:none}
+}
+@media(max-width:760px){.robot-extras .robot-angle-controls{background:rgba(14,20,18,.97)!important}}
