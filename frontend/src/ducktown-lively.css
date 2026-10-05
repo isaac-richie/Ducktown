@@ -533,3 +533,13 @@ microduck-view:defined:not([data-renderer])::after{content:'Waking up the duckâ€
   .robot-extras>.robot-camera .robot-angle-controls{left:auto!important;right:0!important;transform:none}
 }
 @media(max-width:760px){.robot-extras .robot-angle-controls{background:rgba(14,20,18,.97)!important}}
+
+/* Studio renders of the exact robot replace the illustrations outside the hero */
+img.duck-render{display:block;object-fit:contain;-webkit-user-drag:none;user-select:none}
+.behavior-art img.duck-render{position:relative;z-index:1;width:auto!important;height:92%!important;max-width:78%;margin:4% auto 0;filter:drop-shadow(0 14px 18px rgba(30,60,40,.16))}
+.behavior-card:hover .behavior-art img.duck-render{transform:translateY(-4px) rotate(-1.5deg);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.experience-scene img.duck-render{width:min(360px,80%)!important;height:auto!important}
+.profile-hero img.duck-render{height:100%!important;width:auto!important;max-height:240px;align-self:end;margin:auto}
+.profile-hero img.duck-render{height:230px!important;width:100%!important;max-height:none;object-fit:contain;align-self:center}
+@media(max-width:760px){.profile-hero img.duck-render{height:220px!important;align-self:end}}
+.profile-hero img.duck-render{margin:0 auto!important;position:relative;inset:auto!important}

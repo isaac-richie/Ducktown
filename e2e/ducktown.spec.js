@@ -114,7 +114,7 @@ test('demo profile keeps its title readable and robot separate on phones',async(
       const hero=document.querySelector('.profile-hero');
       const copy=hero.querySelector('.profile-copy');
       const title=copy.querySelector('h1');
-      const robot=hero.querySelector('microduck-view');
+      const robot=hero.querySelector('.duck-render');
       const rect=element=>{
         const {top,right,bottom,left}=element.getBoundingClientRect();
         return {top,right,bottom,left};
