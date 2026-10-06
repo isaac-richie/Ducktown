@@ -570,3 +570,8 @@ img.duck-render{display:block;object-fit:contain;-webkit-user-drag:none;user-sel
 @media(max-width:900px){.town-grid{grid-template-columns:1fr 1fr}.place-tile.is-feature{grid-column:span 2;grid-row:auto}.place-tile.is-feature .place-art{min-height:0;aspect-ratio:16/10}}
 @media(max-width:560px){.town-grid{grid-template-columns:1fr;gap:12px}.place-tile.is-feature{grid-column:auto}.place-copy strong{font-size:18px}}
 .map-hint{color:#5c6b60}
+town-scene.place-art{position:relative;display:block}
+town-scene.place-art canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+town-scene.place-art:not(.is-live)::after{content:'';position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px;border-radius:50%;border:3px solid rgba(31,51,40,.15);border-top-color:#e2733f;animation:town-spin .9s linear infinite}
+town-scene.place-art.is-static::after{display:none}
+@keyframes town-spin{to{transform:rotate(360deg)}}

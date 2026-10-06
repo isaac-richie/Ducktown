@@ -4,7 +4,6 @@ import { mountSkillStore } from './skill-store.js';
 // Studio stills of Pollen's exact Microduck (tools/render-ducks.mjs), so every card shows the same
 // robot as the 3D hero instead of an illustration.
 const DUCK_RENDERS = import.meta.glob('./renders/*.webp', {eager: true, query: '?url', import: 'default'});
-const PLACE_RENDERS = import.meta.glob('./places/*.webp', {eager: true, query: '?url', import: 'default'});
 
 (() => {
   const STORE_KEY = 'ducktown-ui-v1';
@@ -215,8 +214,9 @@ const PLACE_RENDERS = import.meta.glob('./places/*.webp', {eager: true, query: '
     return `${pageHead('THE ARENA','Make something delightful.','Save a prompt, sketch an idea, and share your progress in the Pond.','<span class="date-chip">✦ IDEA PROMPTS</span>')}<section class="arena-hero motion-scene is-playing"><div class="arena-copy"><div class="tiny-label">FEATURED PROMPT</div><h2>A tiny hello can<br>go a long way.</h2><p>Imagine a warm greeting for your duck, then share the idea with the flock.</p><button class="button button-dark" data-action="join" data-id="greeting">${state.joined.includes('greeting')?'✓ Saved':'Save this prompt'} →</button></div><div class="arena-art" aria-hidden="true">${icon('wave')}</div></section><div class="section-heading" style="margin-top:24px"><div><h2>Prompts to explore</h2><p>These are creative starting points. No challenge results are measured here.</p></div></div><div class="challenge-grid">${challenges.map((c,index)=>`<article class="challenge-tile card reveal-item" style="--reveal-index:${index}" data-symbol=""><span class="challenge-icon">${icon(c.icon)}</span><span class="challenge-level">${escapeHtml(c.difficulty)}</span><h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.description)}</p><div class="challenge-foot"><span>Creative prompt</span><button class="button challenge-save ${state.joined.includes(c.id)?'is-saved':''}" data-action="join" data-id="${c.id}">${state.joined.includes(c.id)?'✓ Saved':'Save prompt'}</button></div></article>`).join('')}</div><section class="leaderboard card"><h3>Share what you make</h3><p class="perch-note">There are no scores or rankings. Tell the flock what you tried in a Pond note, and include your own context about what worked.</p><button class="button button-outline" data-action="compose">Share an update ↗</button></section>`;
   }
   function renderMap() {
-    // Each place is a small real-scale scene: CC0 Poly Haven props with Pollen's exact robot
-    // (tools/render-places.mjs). The Schoolhouse is shown but not open yet.
+    import('./town-scenes.js');
+    // Each place is a live toy-style 3D scene with Pollen's exact robot in it (town-scenes.js).
+    // The Schoolhouse is shown but not open yet.
     const places = [
       ['pond','pond','The Pond','Stories, build notes and simulator moments from the flock.','Visit the Pond','#dcebe8'],
       ['workshop','workshop','Workshop','Real community skills and ideas to try on your duck.','Open the Workshop','#efe2cf'],
@@ -227,9 +227,9 @@ const PLACE_RENDERS = import.meta.glob('./places/*.webp', {eager: true, query: '
     ];
     const tile=([view,img,name,text,cta,tint],i)=>{
       const tag=view?'button':'div',attrs=view?`data-view="${view}" type="button"`:'aria-disabled="true"';
-      return `<${tag} class="place-tile ${i===0?'is-feature':''} ${view?'':'is-soon'}" ${attrs} style="--tint:${tint};--i:${i}"><span class="place-art"><img src="${PLACE_RENDERS[`./places/${img}.webp`]}" alt="" loading="${i<3?'eager':'lazy'}" decoding="async" width="1200" height="900"></span><span class="place-copy"><span class="place-num">${String(i+1).padStart(2,'0')}</span><strong>${name}</strong><small>${text}</small><em>${cta}${view?' <b aria-hidden="true">→</b>':''}</em></span></${tag}>`;
+      return `<${tag} class="place-tile ${i===0?'is-feature':''} ${view?'':'is-soon'}" ${attrs} style="--tint:${tint};--i:${i}"><town-scene class="place-art" data-place="${img}"></town-scene><span class="place-copy"><span class="place-num">${String(i+1).padStart(2,'0')}</span><strong>${name}</strong><small>${text}</small><em>${cta}${view?' <b aria-hidden="true">→</b>':''}</em></span></${tag}>`;
     };
-    return `${pageHead('EXPLORE DUCKTOWN','Find your place in town.','Six corners, one little robot. Every scene is real-size: the duck is 25 cm tall.','<span class="date-chip">⌗ TOWN MAP</span>')}<div class="town-grid">${places.map(tile).join('')}</div><p class="map-hint">Scenes made from free CC0 models by Poly Haven, with Pollen’s Microduck model.</p>`;
+    return `${pageHead('EXPLORE DUCKTOWN','Find your place in town.','Six corners, one little robot. Every scene is live: the duck is Pollen’s real Microduck, moving through its real joints.','<span class="date-chip">⌗ TOWN MAP</span>')}<div class="town-grid">${places.map(tile).join('')}</div>`;
   }
   function renderProfile() {
     const profile=state.profiles.find(item=>item.handle===state.selectedProfile)||(state.authUser?state.profiles.find(item=>item.ownerId===state.authUser.id):state.profiles[0]);
