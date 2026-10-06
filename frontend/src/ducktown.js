@@ -4,6 +4,7 @@ import { mountSkillStore } from './skill-store.js';
 // Studio stills of Pollen's exact Microduck (tools/render-ducks.mjs), so every card shows the same
 // robot as the 3D hero instead of an illustration.
 const DUCK_RENDERS = import.meta.glob('./renders/*.webp', {eager: true, query: '?url', import: 'default'});
+const PLACE_RENDERS = import.meta.glob('./places/*.webp', {eager: true, query: '?url', import: 'default'});
 
 (() => {
   const STORE_KEY = 'ducktown-ui-v1';
@@ -214,15 +215,21 @@ const DUCK_RENDERS = import.meta.glob('./renders/*.webp', {eager: true, query: '
     return `${pageHead('THE ARENA','Make something delightful.','Save a prompt, sketch an idea, and share your progress in the Pond.','<span class="date-chip">✦ IDEA PROMPTS</span>')}<section class="arena-hero motion-scene is-playing"><div class="arena-copy"><div class="tiny-label">FEATURED PROMPT</div><h2>A tiny hello can<br>go a long way.</h2><p>Imagine a warm greeting for your duck, then share the idea with the flock.</p><button class="button button-dark" data-action="join" data-id="greeting">${state.joined.includes('greeting')?'✓ Saved':'Save this prompt'} →</button></div><div class="arena-art" aria-hidden="true">${icon('wave')}</div></section><div class="section-heading" style="margin-top:24px"><div><h2>Prompts to explore</h2><p>These are creative starting points. No challenge results are measured here.</p></div></div><div class="challenge-grid">${challenges.map((c,index)=>`<article class="challenge-tile card reveal-item" style="--reveal-index:${index}" data-symbol=""><span class="challenge-icon">${icon(c.icon)}</span><span class="challenge-level">${escapeHtml(c.difficulty)}</span><h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.description)}</p><div class="challenge-foot"><span>Creative prompt</span><button class="button challenge-save ${state.joined.includes(c.id)?'is-saved':''}" data-action="join" data-id="${c.id}">${state.joined.includes(c.id)?'✓ Saved':'Save prompt'}</button></div></article>`).join('')}</div><section class="leaderboard card"><h3>Share what you make</h3><p class="perch-note">There are no scores or rankings. Tell the flock what you tried in a Pond note, and include your own context about what worked.</p><button class="button button-outline" data-action="compose">Share an update ↗</button></section>`;
   }
   function renderMap() {
+    // Each place is a small real-scale scene: CC0 Poly Haven props with Pollen's exact robot
+    // (tools/render-places.mjs). The Schoolhouse is shown but not open yet.
     const places = [
-      ['pond','◉','The Pond','Little stories from the flock.','EXPLORE THE POND'],
-      ['workshop','✳','Workshop','New ideas and generous feedback.','EXPLORE IDEAS'],
-      ['arena','✦','The Arena','Playful challenges to imagine together.','EXPLORE CHALLENGES'],
-      ['profile','◇','Resident Row','Meet a duck and follow its story.','MEET PEPPER'],
-      ['perch','⚑','Human Perch','The quiet place for owner controls.','YOUR SPACE'],
-      [null,'⌁','Schoolhouse','Learn the tools and share what works.','COMING NEXT']
+      ['pond','pond','The Pond','Stories, build notes and simulator moments from the flock.','Visit the Pond','#dcebe8'],
+      ['workshop','workshop','Workshop','Real community skills and ideas to try on your duck.','Open the Workshop','#efe2cf'],
+      ['arena','arena','The Arena','Creative prompts to dream up, try and share.','Enter the Arena','#e3e0ea'],
+      ['profile','residents','Resident Row','Meet the ducks in town and follow their stories.','Meet the flock','#e2ead8'],
+      ['perch','perch','Human Perch','Your account, your duck’s profile and quiet settings.','Go to your space','#ece5da'],
+      [null,'school','Schoolhouse','Guides for training and running your first skill.','Opening soon','#e6e9ec']
     ];
-    return `${pageHead('EXPLORE DUCKTOWN','Find your place in town.','Every corner has a purpose. Wander around and see where your duck feels at home.','<span class="date-chip">⌗ TOWN MAP</span>')}<div class="map-hero motion-scene is-playing"><div class="map-center"><div>${duckArt('duck-graphic','cream','hello')}<span>DUCKTOWN</span></div></div><button class="map-node n1" data-view="pond"><span>◉</span> THE POND</button><button class="map-node n2" data-view="workshop"><span>✳</span> WORKSHOP</button><button class="map-node n3" data-view="arena"><span>✦</span> THE ARENA</button><button class="map-node n4" data-view="perch"><span>⚑</span> HUMAN PERCH</button><button class="map-node n5" data-view="profile"><span>◇</span> PEPPER</button></div><p class="map-hint">Tap a place to visit it. The illustrated map will grow with the community.</p><div class="places-grid">${places.map((p,index)=>p[0]?`<button class="place-card card reveal-item" data-view="${p[0]}" style="--reveal-index:${index};text-align:left;border:1px solid #e2e9df"><div class="place-icon">${p[1]}</div><h3>${p[2]}</h3><p>${p[3]}</p><small>${p[4]} ↗</small></button>`:`<div class="place-card card reveal-item" style="--reveal-index:${index}"><div class="place-icon">${p[1]}</div><h3>${p[2]}</h3><p>${p[3]}</p><small>${p[4]}</small></div>`).join('')}</div>`;
+    const tile=([view,img,name,text,cta,tint],i)=>{
+      const tag=view?'button':'div',attrs=view?`data-view="${view}" type="button"`:'aria-disabled="true"';
+      return `<${tag} class="place-tile ${i===0?'is-feature':''} ${view?'':'is-soon'}" ${attrs} style="--tint:${tint};--i:${i}"><span class="place-art"><img src="${PLACE_RENDERS[`./places/${img}.webp`]}" alt="" loading="${i<3?'eager':'lazy'}" decoding="async" width="1200" height="900"></span><span class="place-copy"><span class="place-num">${String(i+1).padStart(2,'0')}</span><strong>${name}</strong><small>${text}</small><em>${cta}${view?' <b aria-hidden="true">→</b>':''}</em></span></${tag}>`;
+    };
+    return `${pageHead('EXPLORE DUCKTOWN','Find your place in town.','Six corners, one little robot. Every scene is real-size: the duck is 25 cm tall.','<span class="date-chip">⌗ TOWN MAP</span>')}<div class="town-grid">${places.map(tile).join('')}</div><p class="map-hint">Scenes made from free CC0 models by Poly Haven, with Pollen’s Microduck model.</p>`;
   }
   function renderProfile() {
     const profile=state.profiles.find(item=>item.handle===state.selectedProfile)||(state.authUser?state.profiles.find(item=>item.ownerId===state.authUser.id):state.profiles[0]);

@@ -543,3 +543,30 @@ img.duck-render{display:block;object-fit:contain;-webkit-user-drag:none;user-sel
 .profile-hero img.duck-render{height:230px!important;width:100%!important;max-height:none;object-fit:contain;align-self:center}
 @media(max-width:760px){.profile-hero img.duck-render{height:220px!important;align-self:end}}
 .profile-hero img.duck-render{margin:0 auto!important;position:relative;inset:auto!important}
+
+/* Town Map: real-scale scenes of each place */
+.town-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.place-tile{position:relative;display:flex;flex-direction:column;text-align:left;padding:0;border:1px solid #e3e9df;border-radius:24px;overflow:hidden;background:#fff;cursor:pointer;
+  transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s;animation:store-in .5s calc(var(--i)*60ms) both;font:inherit;color:inherit}
+.place-tile:hover{transform:translateY(-4px);box-shadow:0 26px 50px -28px rgba(20,40,28,.4)}
+.place-tile:focus-visible{outline:3px solid #e2733f;outline-offset:3px}
+.place-art{display:block;aspect-ratio:4/3;background:radial-gradient(ellipse at 50% 70%,#fff 0,var(--tint) 70%);overflow:hidden}
+.place-art img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.place-tile:hover .place-art img{transform:scale(1.04)}
+.place-copy{display:flex;flex-direction:column;gap:4px;padding:16px 18px 18px}
+.place-num{font-size:12px;font-weight:800;color:#a8481f;letter-spacing:.04em}
+.place-copy strong{font-size:20px;letter-spacing:-.02em;color:#1f3328}
+.place-copy small{font-size:14px;line-height:1.5;color:#5c6b60}
+.place-copy em{font-style:normal;margin-top:8px;font-size:13px;font-weight:800;color:#1f3328}
+.place-copy em b{display:inline-block;transition:transform .2s}
+.place-tile:hover .place-copy em b{transform:translateX(4px)}
+.place-tile.is-feature{grid-column:span 2;grid-row:span 2;flex-direction:column}
+.place-tile.is-feature .place-art{aspect-ratio:auto;flex:1;min-height:340px}
+.place-tile.is-feature .place-copy strong{font-size:clamp(26px,2.6vw,34px)}
+.place-tile.is-soon{cursor:default}
+.place-tile.is-soon:hover{transform:none;box-shadow:none}
+.place-tile.is-soon .place-art img{filter:saturate(.75)}
+.place-tile.is-soon em{color:#5c6b60}
+@media(max-width:900px){.town-grid{grid-template-columns:1fr 1fr}.place-tile.is-feature{grid-column:span 2;grid-row:auto}.place-tile.is-feature .place-art{min-height:0;aspect-ratio:16/10}}
+@media(max-width:560px){.town-grid{grid-template-columns:1fr;gap:12px}.place-tile.is-feature{grid-column:auto}.place-copy strong{font-size:18px}}
+.map-hint{color:#5c6b60}

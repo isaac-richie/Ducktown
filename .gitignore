@@ -10,3 +10,4 @@ work/
 playwright-report/
 test-results/
 .vercel/
+frontend/place-assets-cache/
