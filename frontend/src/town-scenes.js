@@ -87,23 +87,96 @@ function placeDuck(d, scene, {x = 0, y = 0, z = 0, ry = 0}) {
 
 // ---------- the six places ----------
 const SCENES = {
-  pond: {tint: '#d7ece9', colorway: 'cream', view: {target: [0, 12, 0], dist: 150, yaw: .45, pitch: .5}, build(scene, d) {
-    island(scene, 58, '#9fd27a', '#7aa85c');
-    const water = mesh(new THREE.CylinderGeometry(30, 30, 1, 64), clay('#5bbfd6', {roughness: .15, metalness: .05}), {x: -6, y: .1, z: -6});
-    scene.add(water);
-    const ripples = [0, 1, 2].map(i => { const r = mesh(new THREE.TorusGeometry(6, .35, 8, 48), clay('#e8fbff', {transparent: true}), {x: -12, y: .7, z: -10, rx: Math.PI / 2}); r.castShadow = false; scene.add(r); return r; });
-    const pads = [[-22, -2], [6, -22], [-18, -24]].map(([x, z], i) => { const p = cyl(5, 5, .6, '#4f9e4a', {x, y: .8, z}); scene.add(p); if (!i) scene.add(ball(1.8, '#f6a6c1', {x, y: 2.2, z})); return p; });
-    const rubber = new THREE.Group(); rubber.add(ball(4, '#ffd23f', {y: 3}), ball(2.8, '#ffd23f', {x: 2.6, y: 7}), mesh(new THREE.ConeGeometry(1.1, 2.4, 12), clay('#ff8a3d'), {x: 5.2, y: 7, rz: -Math.PI / 2}));
-    rubber.position.set(-6, .5, -2); scene.add(rubber);
-    for (const [x, z] of [[-40, 18], [-44, 8], [34, -30]]) { scene.add(cyl(.5, .5, 18, '#5e8a3e', {x, y: 9, z}, 8)); scene.add(mesh(new THREE.CapsuleGeometry(1.4, 4, 4, 10), clay('#8a5a3c'), {x, y: 18, z})); }
-    scene.add(tree(36, -26, 46), ball(5, '#b9a68f', {x: -30, y: 1.6, z: 32}), ball(3.5, '#cbb9a3', {x: -21, y: 1, z: 38}));
-    placeDuck(d, scene, {x: 30, z: 24, ry: -.7});
+  pond: {tint: '#d4ebe9', colorway: 'cream', view: {target: [-2, 8, 0], dist: 128, yaw: .55, pitch: .52}, build(scene, d) {
+    // Land: grass top over a soil band, like a scoop of garden.
+    const PX = -8, PZ = -4, PR = 33;
+    scene.add(cyl(60, 54, 10, '#a8805c', {y: -5.6}, 72));
+    // Grass top with a hole where the pond is (shape y maps to -z after the rotation).
+    const lawn = new THREE.Shape(); lawn.absarc(0, 0, 60.5, 0, Math.PI * 2, false);
+    const hole = new THREE.Path(); hole.absarc(PX, -PZ, PR + .4, 0, Math.PI * 2, true); lawn.holes.push(hole);
+    const lg = new THREE.ExtrudeGeometry(lawn, {depth: 2.4, bevelEnabled: true, bevelThickness: .5, bevelSize: .5, bevelSegments: 3, curveSegments: 72});
+    lg.rotateX(-Math.PI / 2); scene.add(mesh(lg, clay('#94cf72'), {y: -.6}));
+    for (let i = 0; i < 12; i++) { const a = i * .52 + .2, r = 52 + (i % 3) * 2.5, m = ball(2.6 + (i % 3) * .8, '#8ec46b', {x: Math.cos(a) * r, y: 0, z: Math.sin(a) * r}); m.scale.y = .6; scene.add(m); }
+    // Pond bed and water: the bed shows through at the shallow edge.
+    const wg = new THREE.CircleGeometry(PR, 64, 0, Math.PI * 2); wg.rotateX(-Math.PI / 2);
+    const base = wg.attributes.position.array.slice();
+    const colors = new Float32Array(wg.attributes.position.count * 3), deepC = new THREE.Color('#2f8fb5'), shallowC = new THREE.Color('#9be6e3'), tmp = new THREE.Color();
+    for (let i = 0; i < wg.attributes.position.count; i++) {
+      const r = Math.hypot(base[i * 3], base[i * 3 + 2]) / PR; tmp.copy(deepC).lerp(shallowC, Math.pow(r, 2.2)).toArray(colors, i * 3);
+    }
+    wg.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const water = mesh(wg, new THREE.MeshPhysicalMaterial({vertexColors: true, roughness: .06, metalness: 0, clearcoat: 1, clearcoatRoughness: .05, envMapIntensity: 1.3}), {x: PX, y: .6, z: PZ});
+    water.castShadow = false; scene.add(water);
+    // Pebble shoreline.
+    for (let i = 0; i < 34; i++) {
+      const a = i / 34 * Math.PI * 2 + (i % 2) * .05, r = PR + 1.2 + (i % 3) * .9;
+      const p = ball(1.6 + (i * 13 % 5) * .35, ['#cfc6b8', '#b8ad9c', '#e2dbcf', '#a99f90'][i % 4], {x: PX + Math.cos(a) * r, y: 2.2, z: PZ + Math.sin(a) * r});
+      p.scale.y = .55; scene.add(p);
+    }
+    // Wooden dock reaching into the water; the duck stands at its end.
+    const dock = new THREE.Group(); dock.position.set(PX + 30, 0, PZ + 10); dock.rotation.y = 2.6;
+    for (let i = 0; i < 6; i++) dock.add(box(4.2, 1.2, 14, i % 2 ? '#c79363' : '#b98353', {x: i * 4.5, y: 2.6}, .4));
+    for (const x of [0, 22.5]) for (const z of [-6, 6]) dock.add(cyl(.9, .9, 6, '#8d5f3c', {x, y: .6, z}, 10));
+    scene.add(dock);
+    dock.updateMatrixWorld();
+    const dockEnd = new THREE.Vector3(18, 3.2, 0).applyMatrix4(dock.matrixWorld);
+    placeDuck(d, scene, {x: dockEnd.x, y: dockEnd.y, z: dockEnd.z, ry: -.2});
+    // Lily pads (one with a flower, one with a frog).
+    const pad = (x, z, r) => { const g = new THREE.Group(); g.position.set(PX + x, .55, PZ + z); const m = mesh(new THREE.CylinderGeometry(r, r, .5, 28, 1, false, .35, Math.PI * 2 - .7), clay('#4fa35a'), {}); g.add(m); scene.add(g); return g; };
+    const pads = [pad(-14, 6, 5), pad(4, -16, 4.2), pad(-6, -6, 3.4), pad(10, 8, 3.8)];
+    const lotus = new THREE.Group(); for (let k = 0; k < 6; k++) { const pet = ball(1.4, '#f7a8c8', {x: Math.cos(k) * .9, y: 1.2, z: Math.sin(k) * .9}); pet.scale.set(.6, 1, .6); lotus.add(pet); } lotus.add(ball(.8, '#ffd23f', {y: 1.6})); pads[1].add(lotus);
+    const frog = new THREE.Group(); frog.position.y = .4;
+    const body = ball(2.6, '#6cc04a', {y: 1.8}); body.scale.set(1, .75, 1.15); frog.add(body);
+    const throat = ball(1.3, '#d9f2a6', {y: 1.2, z: 2.1}); frog.add(throat);
+    const eyes = [-1.2, 1.2].map(x => { const e = new THREE.Group(); e.position.set(x, 3.6, 1.2); e.add(ball(1, '#6cc04a', {}), ball(.55, '#1d1d1d', {z: .7})); frog.add(e); return e; });
+    frog.rotation.y = .6; pads[0].add(frog);
+    // Rubber duck, fish, ripples.
+    const rubber = new THREE.Group(); rubber.add(ball(3.2, '#ffd23f', {y: 2.2}), ball(2.2, '#ffd23f', {x: 2.2, y: 5.4}), mesh(new THREE.ConeGeometry(.9, 2, 12), clay('#ff8a3d'), {x: 4.3, y: 5.3, rz: -Math.PI / 2}));
+    scene.add(rubber);
+    const fish = new THREE.Group(); const fb = mesh(new THREE.CapsuleGeometry(1.3, 3.4, 6, 12), clay('#ff8a3d'), {rz: Math.PI / 2}); fish.add(fb, mesh(new THREE.ConeGeometry(1.4, 2.2, 3), clay('#ff6a2d'), {x: -3.4, rz: Math.PI / 2}), ball(.35, '#222', {x: 1.9, y: .5, z: .8}));
+    scene.add(fish);
+    const ripple = () => { const r = mesh(new THREE.TorusGeometry(2, .28, 6, 40), clay('#ffffff', {transparent: true, opacity: 0}), {rx: Math.PI / 2}); r.castShadow = false; scene.add(r); return r; };
+    const ripples = [ripple(), ripple(), ripple()], splash = [ripple(), ripple()];
+    // Shore planting: reeds, flowers, a bush and a tree.
+    for (const [x, z, h] of [[-38, 14, 18], [-36, 20, 22], [-41, 22, 16], [-33, 25, 20]]) { scene.add(cyl(.4, .5, h, '#5e8a3e', {x, y: h / 2, z}, 6)); scene.add(mesh(new THREE.CapsuleGeometry(1.1, 3.4, 4, 10), clay('#8a5a3c'), {x, y: h - 1, z})); }
+    const flowers = [];
+    for (let i = 0; i < 16; i++) {
+      const a = 1.2 + i * .37, r = 43 + (i % 4) * 3.5, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const f = new THREE.Group(); f.position.set(x, 0, z);
+      f.add(cyl(.25, .25, 5, '#5e8a3e', {y: 2.5}, 5), ball(1.2, ['#ff7fa8', '#fff3b0', '#c9a7ff', '#ffffff'][i % 4], {y: 5.4}), ball(.5, '#ffcc33', {y: 5.6, z: .6}));
+      scene.add(f); flowers.push(f);
+    }
+    scene.add(ball(8, '#7cbd5c', {x: 34, y: 3.5, z: -36}), ball(6, '#8ccd6b', {x: 42, y: 2.5, z: -30}));
+    const oak = tree(-30, -40, 50, '#78bf5f'); scene.add(oak);
+    // Dragonfly.
+    const fly = new THREE.Group(); fly.add(mesh(new THREE.CapsuleGeometry(.35, 4, 4, 8), clay('#3fb5c9'), {rz: Math.PI / 2}));
+    const wings = [-1, 1].flatMap(sx => [-.6, .6].map(dx => { const w = mesh(new THREE.PlaneGeometry(3.6, 1), new THREE.MeshStandardMaterial({color: '#e8fbff', transparent: true, opacity: .6, side: THREE.DoubleSide}), {x: dx, z: sx * 1.9, rx: Math.PI / 2}); w.castShadow = false; fly.add(w); return w; }));
+    scene.add(fly);
+    const pos = wg.attributes.position;
     return t => {
-      rubber.position.y = .5 + Math.sin(t * 2.2) * .5; rubber.rotation.z = Math.sin(t * 1.7) * .08; rubber.position.x = -6 + Math.sin(t * .4) * 4;
-      ripples.forEach((r, i) => { const k = (t * .45 + i / 3) % 1; r.scale.setScalar(.4 + k * 2.4); r.material.opacity = 1 - k; });
-      pads.forEach((p, i) => { p.position.y = .8 + Math.sin(t * 1.3 + i) * .15; });
+      // Gentle rolling water.
+      for (let i = 0; i < pos.count; i++) {
+        const x = base[i * 3], z = base[i * 3 + 2];
+        pos.array[i * 3 + 1] = Math.sin(x * .22 + t * 1.6) * .22 + Math.sin(z * .27 - t * 1.2) * .18 + Math.sin((x + z) * .4 + t * 2.3) * .08;
+      }
+      pos.needsUpdate = true; wg.computeVertexNormals();
+      pads.forEach((p, i) => { p.position.y = .55 + Math.sin(t * 1.6 + i * 1.3) * .2; p.rotation.y = Math.sin(t * .3 + i) * .2; });
+      rubber.position.set(PX + Math.cos(t * .25) * 14, .2 + Math.sin(t * 2.2) * .3, PZ + Math.sin(t * .25) * 12); rubber.rotation.y = -t * .25 + Math.PI / 2; rubber.rotation.z = Math.sin(t * 1.9) * .1;
+      ripples.forEach((r, i) => { const k = (t * .35 + i / 3) % 1; r.position.set(PX - 4, .6, PZ + 2); r.scale.setScalar(.6 + k * 5); r.material.opacity = (1 - k) * .7; });
+      // The fish leaps every 4.5 s in a short arc, with a splash where it lands.
+      const cycle = (t % 4.5) / 1.1, fx = PX + 6, fz = PZ - 2;
+      fish.visible = cycle < 1;
+      if (fish.visible) { fish.position.set(fx - 7 + cycle * 14, Math.sin(cycle * Math.PI) * 9 - .5, fz); fish.rotation.z = (.5 - cycle) * 1.8; }
+      splash.forEach((r, i) => { const k = Math.min(1, Math.max(0, ((t % 4.5) - 1.05 - i * .15) / .9)); r.position.set(fx + 7, .6, fz); r.scale.setScalar(.5 + k * 3); r.material.opacity = k > 0 && k < 1 ? (1 - k) * .9 : 0; });
+      // Frog: throat puffs, eyes blink now and then.
+      throat.scale.setScalar(1 + Math.max(0, Math.sin(t * 3)) * .45);
+      const blink = (t % 3.7) < .12 ? .15 : 1; eyes.forEach(e => { e.scale.y = blink; });
+      flowers.forEach((f, i) => { f.rotation.z = Math.sin(t * 1.4 + i) * .08; });
+      oak.rotation.z = Math.sin(t * .9) * .025;
+      const fa = t * .9; fly.position.set(Math.sin(fa) * 26 + PX, 14 + Math.sin(t * 2.6) * 3, Math.sin(fa * 2) * 14 + PZ); fly.rotation.y = -Math.atan2(Math.cos(fa * 2) * 28, Math.cos(fa) * 26);
+      wings.forEach((w, i) => { w.rotation.x = Math.PI / 2 + Math.sin(t * 40 + i) * .5; });
       const wave = Math.sin(t * 6) * .5 + .5;
-      pose(d, {drop: .004 + Math.sin(t * 2) * .002, roll: Math.sin(t * 1.2) * .04, head: {pitch: -.2, yaw: .35 + Math.sin(t * .9) * .15, roll: .25 * wave}});
+      pose(d, {drop: .004 + Math.sin(t * 2) * .002, roll: Math.sin(t * 1.2) * .04, head: {pitch: -.18, yaw: .3 + Math.sin(t * .9) * .2, roll: .25 * wave}});
     };
   }},
   workshop: {tint: '#f1e3cf', colorway: 'sky', view: {target: [0, 30, 0], dist: 165, yaw: .5, pitch: .38}, build(scene, d) {
