@@ -106,10 +106,20 @@ const down = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-5-5
 // Preview clips are whole files (often several MB, not streamable), so cards never load them up
 // front: a card shows the maker's thumbnail or a colour tile, and the clip starts on hover.
 const hue = id => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
-let markUrl = '';
+// Without a thumbnail, a card shows Pollen's exact robot in a pose that suits the skill's name.
+let artFor = () => '';
+const COLOURS = ['cream', 'sky', 'lavender', 'graphite'];
+export function poseFor(id) {
+  const n = id.toLowerCase();
+  return /kick|ball|basket|foot/.test(n) ? 'kick' : /bow|polite/.test(n) ? 'bow' : /pick|grab|beak|peck/.test(n) ? 'pick'
+    : /roll|roulade|flip|stand-?up|recover|get-?up|headstand/.test(n) ? 'roll' : /sit/.test(n) ? 'sit'
+    : /dance|groove|slide|moonwalk|hop|jump|swing/.test(n) ? 'dance' : /flamingo|balance|stilt|climb|step/.test(n) ? 'balance'
+    : /look|detect|vision|follow/.test(n) ? 'look' : /walk|run|sprint|roller|gait/.test(n) ? 'hello' : 'stand';
+}
+const art = s => artFor(COLOURS[hue(s.id) % 4], poseFor(s.id));
 function card(s, i) {
-  // The colour tile is always there, so a slow thumbnail fades in over it instead of a blank box.
-  const media = `<span class="store-art" style="--h:${hue(s.id)}" aria-hidden="true">${markUrl ? `<img src="${esc(markUrl)}" alt="">` : ''}</span>`
+  // The robot tile is always there, so a slow thumbnail fades in over it instead of a blank box.
+  const media = `<span class="store-art" style="--h:${hue(s.id)}" aria-hidden="true"><img src="${esc(art(s))}" alt="" loading="lazy"></span>`
     + (s.poster ? `<img class="store-thumb" src="${esc(s.poster)}" alt="" loading="lazy" onload="this.classList.add('is-in')">` : '');
   return `<article class="store-card" style="--i:${i % PAGE}">
     <button class="store-media" data-skill="${esc(s.id)}" aria-label="Open ${esc(s.name)}">${media}${s.video ? `<span class="store-play" aria-hidden="true"></span><span class="store-clip" data-clip="${esc(s.video)}"></span>` : ''}
@@ -152,9 +162,9 @@ function hoverPreviews(root) {
   };
 }
 
-export function mountSkillStore(root, {openModal, mark = ''}) {
+export function mountSkillStore(root, {openModal, art: pick}) {
   if (!root) return;
-  markUrl = mark;
+  if (pick) artFor = pick;
   const draw = skills => { root.innerHTML = shell(skills); hoverPreviews(root); };
   if (cache) draw(cache);
   else {
@@ -166,7 +176,7 @@ export function mountSkillStore(root, {openModal, mark = ''}) {
   root.onclick = event => {
     const t = event.target.closest('[data-store-filter],[data-store-sort],[data-store-more],[data-skill],[data-store-retry]');
     if (!t) return;
-    if (t.dataset.storeRetry !== undefined) return mountSkillStore(root, {openModal, mark});
+    if (t.dataset.storeRetry !== undefined) return mountSkillStore(root, {openModal, art: pick});
     if (t.dataset.skill) return openSkill(t.dataset.skill, openModal);
     if (t.dataset.storeFilter) { ui.filter = t.dataset.storeFilter; ui.shown = PAGE; }
     if (t.dataset.storeSort) ui.sort = t.dataset.storeSort;
@@ -182,42 +192,59 @@ export function mountSkillStore(root, {openModal, mark = ''}) {
   };
 }
 
+const copyIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>';
 async function openSkill(id, openModal) {
   const s = cache?.find(x => x.id === id);
   if (!s) return;
-  const placeholder = s.video ? `<video src="${esc(s.video)}" ${s.poster ? `poster="${esc(s.poster)}"` : ''} controls muted loop playsinline autoplay></video>` : s.poster ? `<img src="${esc(s.poster)}" alt="">` : '';
-  openModal(`<div class="skill-sheet"><div class="skill-media">${placeholder}</div><div class="skill-info">
-    <div class="skill-top">${s.official ? '<span class="store-badge official">Pollen</span>' : ''}<a href="${HUB}/${esc(s.id)}" target="_blank" rel="noopener noreferrer">${esc(s.id)} ↗</a></div>
-    <h2>${esc(s.name)}</h2><p class="skill-desc" data-skill-desc>Loading details…</p>
-    <dl class="skill-facts" data-skill-facts></dl>
-    <div class="skill-install"><span>Put it on your duck</span><div class="skill-cmd"><code data-skill-cmd>sudo robotctl policy add ${esc(skillName(s.id))} ${esc(s.id)}</code><button type="button" data-copy-cmd>Copy</button></div>
-    <small data-skill-run>Then run it with <code>robotctl robot do ${esc(skillName(s.id))}</code>. The duck must be driving: press Start on the pad first.</small></div>
-    <p class="skill-warning" data-skill-warning hidden></p>
-    <p class="store-note">Published by <a href="${HUB}/${esc(s.owner)}" target="_blank" rel="noopener noreferrer">${esc(s.owner)}</a>${s.license ? ` under ${esc(s.license)}` : ''}. Not checked by Ducktown or Pollen.</p>
-  </div></div>`, true, 'skill');
+  const backdrop = esc(s.poster || art(s));
+  const media = `<img class="skill-still" src="${backdrop}" alt="">`
+    + (s.video ? `<video muted loop playsinline autoplay preload="auto" src="${esc(s.video)}"></video><span class="skill-loading" data-skill-loading><i></i>Loading the preview…</span>` : '<span class="skill-loading is-static">No preview video yet · pose shown is illustrative</span>');
+  const cmd = `sudo robotctl policy add ${skillName(s.id)} ${s.id}`;
+  openModal(`<div class="skill-sheet" style="--h:${hue(s.id)}">
+    <div class="skill-media">${media}<div class="skill-badges">${s.official ? '<span class="store-badge official">Pollen</span>' : ''}${s.kind ? `<span class="store-badge">${s.kind === 'trick' ? 'Trick' : 'Gait'}</span>` : ''}</div></div>
+    <div class="skill-info">
+      <div class="skill-maker"><span class="skill-avatar">${esc(s.owner[0].toUpperCase())}</span><span><strong>${esc(s.owner)}</strong><small>Updated ${ago(s.updated)}</small></span></div>
+      <h2>${esc(s.name)}</h2>
+      <div class="skill-chips"><span>${heart}${compact(s.likes)} likes</span><span>${down}${compact(s.downloads)} downloads</span>${s.license ? `<span>${esc(s.license)}</span>` : ''}</div>
+      <p class="skill-desc" data-skill-desc><span class="skill-shimmer"></span><span class="skill-shimmer short"></span></p>
+      <dl class="skill-facts" data-skill-facts></dl>
+      <p class="skill-warning" data-skill-warning hidden></p>
+      <ol class="skill-steps">
+        <li><b>1</b><span><strong>Install</strong><code data-skill-cmd>${esc(cmd)}</code></span></li>
+        <li><b>2</b><span><strong>Wake your duck</strong><small>Press Start on the gamepad so it is driving.</small></span></li>
+        <li><b>3</b><span><strong>Run it</strong><code data-skill-run>robotctl robot do ${esc(skillName(s.id))}</code></span></li>
+      </ol>
+      <div class="skill-actions"><button type="button" class="button button-dark" data-copy-cmd>${copyIcon}<span>Copy install command</span></button><a class="button button-outline" href="${HUB}/${esc(s.id)}" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a></div>
+      <p class="store-note">Published by its maker. Not checked by Ducktown or Pollen.</p>
+    </div></div>`, true, 'skill');
   const modal = document.querySelector('.modal-skill');
+  const video = modal?.querySelector('video');
+  video?.addEventListener('playing', () => { modal.classList.add('has-video'); }, {once: true});
+  video?.addEventListener('error', () => { const l = modal.querySelector('[data-skill-loading]'); if (l) l.textContent = 'Preview unavailable'; }, {once: true});
   modal?.querySelector('[data-copy-cmd]')?.addEventListener('click', async event => {
-    const text = modal.querySelector('[data-skill-cmd]').textContent;
-    try { await navigator.clipboard.writeText(text); event.target.textContent = 'Copied'; } catch { event.target.textContent = 'Select & copy'; }
-    setTimeout(() => { event.target.textContent = 'Copy'; }, 1800);
+    const button = event.currentTarget, label = button.querySelector('span');
+    try { await navigator.clipboard.writeText(modal.querySelector('[data-skill-cmd]').textContent); label.textContent = 'Copied ✓'; button.classList.add('is-done'); }
+    catch { label.textContent = 'Select the command above'; }
+    setTimeout(() => { label.textContent = 'Copy install command'; button.classList.remove('is-done'); }, 1800);
   });
   const [manifest, summary] = await Promise.all([s.hasManifest ? loadManifest(s.id) : null, loadSummary(s.id)]);
   if (!modal?.isConnected) return;
-  const name = skillName(s.id, manifest);
-  const kind = manifest?.kind === 'episodic' ? 'Trick (runs once)' : manifest?.kind === 'perpetual' ? 'Gait or hold (runs until stopped)' : s.kind === 'gait' ? 'Gait' : null;
+  const name = skillName(s.id, manifest), perpetual = manifest?.kind === 'perpetual';
+  const kind = manifest?.kind === 'episodic' ? 'Trick · runs once' : perpetual ? 'Holds until stopped' : s.kind === 'gait' ? 'Gait' : null;
   const facts = [
     kind && ['Type', kind],
     manifest?.duration_s && ['Length', `${manifest.duration_s} s`],
     manifest?.robot?.control_hz && ['Runs at', `${manifest.robot.control_hz} Hz`],
-    manifest?.entry_pose && ['Starts from', manifest.entry_pose],
-    manifest?.training?.repo && ['Trained with', manifest.training.repo.replace('pollen-robotics/', '')],
-    ['Likes', compact(s.likes)], ['Downloads', compact(s.downloads)], ['Updated', ago(s.updated)]
+    manifest?.entry_pose && ['Starts', manifest.entry_pose],
+    manifest?.training?.repo && ['Trained with', manifest.training.repo.replace('pollen-robotics/', '')]
   ].filter(Boolean);
   modal.querySelector('[data-skill-desc]').textContent = manifest?.description || summary || 'The maker has not written a description yet. See the model page for details.';
   modal.querySelector('[data-skill-facts]').innerHTML = facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
-  const perpetual = manifest?.kind === 'perpetual';
   modal.querySelector('[data-skill-cmd]').textContent = `sudo robotctl policy add ${name} ${s.id}${perpetual ? ' --hold 5' : ''}`;
-  modal.querySelector('[data-skill-run]').innerHTML = `Then run it with <code>robotctl robot do ${esc(name)}</code>. The duck must be driving: press Start on the pad first.${perpetual ? ' This one holds until stopped, so <code>--hold 5</code> gives it a length; check its notes for any command it needs.' : ''}`;
+  modal.querySelector('[data-skill-run]').textContent = `robotctl robot do ${name}`;
   const limits = manifest?.eval?.known_limits || (/never (been )?(run|tested) on hardware|sim only/i.test(summary + JSON.stringify(manifest || {})) ? 'Only tested in simulation so far.' : '');
-  if (limits) { const w = modal.querySelector('[data-skill-warning]'); w.hidden = false; w.textContent = `Known limits: ${limits}`; }
+  if (limits || perpetual) {
+    const w = modal.querySelector('[data-skill-warning]'); w.hidden = false;
+    w.textContent = [limits && `Known limits: ${limits}`, perpetual && '--hold 5 gives this skill a length; check its notes for any command it needs.'].filter(Boolean).join(' ');
+  }
 }

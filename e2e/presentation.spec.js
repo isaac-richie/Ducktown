@@ -28,7 +28,7 @@ test('two people can create profiles, share a note, and reply in separate sessio
   test.setTimeout(60000);
   const {viewport,isMobile,hasTouch}=testInfo.project.use;
   const contexts=await Promise.all([browser.newContext({viewport,isMobile,hasTouch}),browser.newContext({viewport,isMobile,hasTouch})]);
-  const base='http://127.0.0.1:8790';
+  const base=testInfo.project.use.baseURL;
   const suffix=`${testInfo.project.name}_${Date.now().toString(36)}`;
   try {
     const pages=[];

@@ -4,13 +4,14 @@ import path from 'node:path';
 import { createApp } from '../server/app.js';
 import { SimulatorObserver } from '../server/simulator.js';
 
+const PORT=Number(process.env.DUCKTOWN_E2E_PORT||8790);
 const folder=await mkdtemp(path.join(os.tmpdir(),'ducktown-browser-'));
 let app;
 try {
   app=await createApp({dataFile:path.join(folder,'town.json'),publicOrigin:null,simulator:new SimulatorObserver({root:null})});
-  app.server.listen(8790,'127.0.0.1');
+  app.server.listen(PORT,'127.0.0.1');
   await new Promise((resolve,reject)=>{app.server.once('listening',resolve);app.server.once('error',reject);});
-  console.log('Ducktown isolated browser test server: http://127.0.0.1:8790/');
+  console.log(`Ducktown isolated browser test server: http://127.0.0.1:${PORT}/`);
 } catch(error) {app?.store.close();await rm(folder,{recursive:true,force:true});throw error;}
 
 let closing=false;

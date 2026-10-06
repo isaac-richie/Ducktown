@@ -79,7 +79,7 @@ test('every town view fits small phones and keeps navigation usable',async({page
       ['perch','The Human Perch.']
     ]){
       await page.goto(`/#${route}`);
-      await expect(page.locator('.pond-heading,.page-head').getByRole('heading',{name:heading})).toBeVisible();
+      await expect(page.locator('.pond-heading,.page-head,.place-banner').getByRole('heading',{name:heading})).toBeVisible();
       await expect(page.getByRole('navigation',{name:'Mobile navigation'})).toBeVisible();
       const layout=await page.evaluate(()=>({
         viewport:innerWidth,
